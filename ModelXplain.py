@@ -1,4 +1,8 @@
-#importing all nessessary libraries beforehand
+# Ultimate model explanation library
+#
+# Have fun!
+
+# importing all nessessary libraries beforehand
 
 import time
 import shap
@@ -8,10 +12,9 @@ import matplotlib.pyplot as plt
 import ipywidgets as widgets
 import logging as log
 
-
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import  GradientBoostingRegressor
-from sklearn.ensemble import  RandomForestRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.inspection import partial_dependence
 from sklearn.inspection import plot_partial_dependence
 from matplotlib import pyplot as plt
@@ -29,7 +32,8 @@ from lime.lime_tabular import LimeTabularExplainer
 
 
 def get_loco_feature_importances(estimated_model, X, y, feature_names=None, normalize_result=True, normalize_num=1.0,
-                                 error_type='divide', metrics='mean_squared_error', verbose=False, data_split=False):
+                                 error_type='divide', metrics='mean_squared_error', verbose=False, data_split=False,
+                                 prefit=True, X_train=None, y_train=None):
     # === FUNCTION SUMMARY ====================================================================================================
 
     # Input: Trained model estimated_model, feature matrix X, target value y, error measure
@@ -47,7 +51,7 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
     # ===LIST OF ARGUMENTS: ===================================================================================================
 
     #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)  ///
-    #  PRE-TRAINED input model which we want to calculate PFI for
+    #  input model which we want to calculate PFI for
 
     #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values
 
@@ -57,13 +61,35 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
 
     #  metrics  ///  (string - any metrics from  metrics_dict.keys())  ///  option for choosing error calculation method
 
-    #  normalize_num  /// (number)  ///  value for normilizing features upon
+    #  normalize_num  /// (number)  ///  value for normilizing features upon calculating error per every feature's eclusion (OPTIONAL)
+
+    #  data_split  ///  (bool)   ///  option for splitting data when calculatig
+
+    #  prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not  (OPTIONAL)
+
+    #  X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model (OPTIONAL)
+
+    #  y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model (OPTIONAL)
 
     #  verbose  ///  (bool) (OPTIONAL- REMOVAL REQUIRED)  ///  option for outputting detailed
 
     # === OUTPUT ==============================================================================================================
 
     # Output  /// (numpy.array) ///  function returns LOCO feature importances
+
+    if isinstance(X_train, (pd.DataFrame)):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+        return
+
+    if isinstance(y_train, (pd.DataFrame)):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+        return
+
+    if prefit == False:
+        try:
+            estimated_model.fit(X_train, y_train)
+        except:
+            logging.warning("Estimated model must have fit method.")
 
     if error_type != 'divide' and error_type != 'subtract':
         print("Incorrect error type.")
@@ -89,7 +115,7 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
         if feature_names is None:
             feature_names = np.array(X.columns)
     else:
-        logging.warning("Incorrect type of X.")
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
 
     n_features = df.shape[1]
@@ -110,15 +136,29 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
     for i in range(n_features):
         current_feature = feature_names[i]
 
-        df_temp = df.copy()
-        df_temp = df_temp.drop(current_feature, axis=1)  # calculating error per every feature's eclusion
+        if data_split == True:
 
-        estimated_model.fit(df_temp, y)
+            df_temp = df.copy()
+            df_train, df_test, y_train, y_test = train_test_split(df_temp, y, test_size=0.23, random_state=0)
 
-        prediction = estimated_model.predict(df_temp)
-        feature_loss = metrics_dict[metrics](y, prediction)
+            df_train = df_train.drop(current_feature, axis=1)
+            df_test = df_test.drop(current_feature, axis=1)
 
-        result[i] += feature_loss
+            estimated_model.fit(df_train, y_train)
+
+            prediction = estimated_model.predict(df_test)
+            feature_loss = metrics_dict[metrics](y_test, prediction)
+
+        else:
+            df_temp = df.copy()
+            df_temp = df_temp.drop(current_feature, axis=1)  # calculating error per every feature's eclusion
+
+            estimated_model.fit(df_temp, y)
+
+            prediction = estimated_model.predict(df_temp)
+            feature_loss = metrics_dict[metrics](y, prediction)
+
+            result[i] += feature_loss
 
     if error_type == 'divide':
         if start_loss == 0:
@@ -140,7 +180,8 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
 
 
 def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, normalize_result=True, normalize_num=1.0,
-                                error_type='divide', metrics='mean_squared_error', shuffle_num=3, verbose=False):
+                                error_type='divide', metrics='mean_squared_error', shuffle_num=3, verbose=False,
+                                prefit=True, X_train=None, y_train=None):
     # === FUNCTION SUMMARY ====================================================================================================
 
     #  1) Input trained model, table of features and coloumn of target values
@@ -165,7 +206,7 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
 
     #  metrics  ///  (string - any metrics from  metrics_dict.keys())  ///  option for choosing error calculation method
 
-    # shuffle_num  ///  number  ///  number of shuffles of selected feature
+    #  shuffle_num  ///  number  ///  number of shuffles of selected feature
 
     #  normalize_num  /// (number)  ///  value for normilizing features upon
 
@@ -175,15 +216,29 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
 
     # Output  /// (numpy.array) ///  function returns PFI feature importances
 
+    if isinstance(X_train, (pd.DataFrame)):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+        return
+
+    if isinstance(y_train, (pd.DataFrame)):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+        return
+
+    if prefit == False:
+        try:
+            estimated_model.fit(X_train, y_train)
+        except:
+            logging.warning("Estimated model must have fit method.")
+
     if error_type != 'divide' and error_type != 'subtract':
         logging.warning("Incorrect error type.")
         return
 
-    if shuffle_num == 0:
+    if shuffle_num <= 0:
         logging.warning("Incorrect shuffle num. Shuffle amount should be at least 1.")
         return
 
-    if normalize_num == 0:
+    if normalize_num <= 0:
         logging.warning(
             "Incorrect normalization value (zero). Best normalization values for result representation are 1 and 100.")
         return
@@ -251,63 +306,8 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
     return result
 
 
-def get_genie_feature_importances(estimated_model, X_train, y_train, normalize_result=True,
-                                  prefit=True, normalize_num=1.0, verbose=False):
-    # === FUNCTION SUMMARY ====================================================================================================
-
-    # Just a simple overlay of the standard SKlearn Genie criteria-based feature importance method
-
-    # ===LIST OF ARGUMENTS: ===================================================================================================
-
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .feature_importances_
-    # methods)  /// input model which we want to calculate feature importances for for
-
-    # X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model
-
-    # y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model
-
-    # normalize_num  /// (number)  ///  value for normilizing features upon
-
-    # prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not
-
-    #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed
-
-    # === OUTPUT ==============================================================================================================
-
-    # Output  /// (numpy.array) ///  function returns feature importances
-
-    if not isinstance(X, (pd.DataFrame)):
-        logging.warning("MISSING ARGUMENT: X.")
-        return
-
-    if not isinstance(y, (pd.DataFrame)):
-        logging.warning("MISSING ARGUMENT: y.")
-        return
-
-    if normalize_num == 0:
-        logging.warning(
-            "Incorrect normalization value (zero). Best normalization values for result representation are 1 and 100.")
-        return
-
-    if prefit == False:
-        try:
-            estimated_model.fit(X_train, y_train)
-        except:
-            logging.warning("Estimated model must have fit method.")
-
-    try:
-        feature_importance = estimated_model.feature_importances_
-    except:
-        logging.warning("Estimated model must have feature_importances_ method.")
-
-    if normalize_result == True:
-        feature_importance = normalize_num * (feature_importance / feature_importance.max())
-
-    return feature_importance
-
-
-def ice_plot_2D(estimated_model, X_train, y_train, X_test, y_test, feature_names, target_feature, prefit=True,
-                verbose=False):
+def ice_plot_2D(estimated_model, X, y, feature_names, target_feature, prefit=True,
+                X_train=None, y_train=None, verbose=False):
     # === FUNCTION SUMMARY ====================================================================================================
 
     # Just a simple overlay of the pdpbox library function pdp_isolate for PDP/ICE plotting
@@ -316,10 +316,6 @@ def ice_plot_2D(estimated_model, X_train, y_train, X_test, y_test, feature_names
 
     #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .feature_importances_
     #  methods)  /// input model which we want to plot partial dependence for
-
-    #  X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model
-
-    #  y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model
 
     #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for plotting PDP
 
@@ -331,26 +327,38 @@ def ice_plot_2D(estimated_model, X_train, y_train, X_test, y_test, feature_names
 
     #  prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not  (OPTIONAL)
 
+    #  X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model (OPTIONAL)
+
+    #  y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model (OPTIONAL)
+
     #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
 
     # === OUTPUT ==============================================================================================================
 
     # Output  ///  plots a PDP plot
 
-    if not isinstance(X, (pd.DataFrame)):
-        logging.warning("MISSING ARGUMENT: X.")
+    if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
 
     if not isinstance(y, (pd.DataFrame)):
-        logging.warning("MISSING ARGUMENT: y.")
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
         return
 
     if not isinstance(feature_names, (list)):
-        logging.warning("MISSING ARGUMENT: feature_names.")
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_names.")
         return
 
-    if not isinstance(target_feature, (string)):
-        logging.warning("MISSING ARGUMENT: target_feature.")
+    if not isinstance(target_feature, (str)):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: target_feature.")
+        return
+
+    if X_train == None:
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+        return
+
+    if y_train == None:
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
         return
 
     from matplotlib import pyplot as plt
@@ -368,151 +376,32 @@ def ice_plot_2D(estimated_model, X_train, y_train, X_test, y_test, feature_names
     pdp.pdp_plot(pdp_goals, target_feature)
     plt.show()
 
-    def pdp_values(estimated_model, X_train, y_train, X_test, y_test, feature_names, target_feature, target_val_upper,
-                   target_val_lower, grid_points_val=30, prefit=True, verbose=False):
-
-        # === FUNCTION SUMMARY ====================================================================================================
-
-        # Just a simple overlay of the pdpbox library function pdp_isolate for calculating PDP values of test feature, at which the
-        # target variable falls into the specified interval
-
-        # ===LIST OF ARGUMENTS: ==================================================================================================
-
-        #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .feature_importances_
-        #  methods)  /// input model which we want to plot partial dependence for
-
-        #  X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model
-
-        #  y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model
-
-        #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for calculatig intervals
-
-        #  y  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for calculatig intervals
-
-        #  feature_names  ///  (list)  ///   a list of feature names
-
-        #  target_feature  ///  (string)  ///  name of the target feature to work with
-
-        #  target_val_upper  ///  (value)  ///  upper-bound value of target value
-
-        #  target_val_lower  ///  (value)  ///  lower-bound value of target value
-
-        #  grid_points_val  ///  (value)  ///  number of PDP points
-
-        #  prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not  (OPTIONAL)
-
-        #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
-
-        # === OUTPUT ==============================================================================================================
-
-        # Output  ///  (numpy.array)  ///  2-coloumn array of intervals of PDP values on which target value falls into
-        # defined interval  (NEEDS MORE WORK)
-
-        if not isinstance(X, (pd.DataFrame)):
-            logging.warning("MISSING ARGUMENT: X.")
-            return
-
-        if not isinstance(y, (pd.DataFrame)):
-            logging.warning("MISSING ARGUMENT: y.")
-            return
-
-        if not isinstance(feature_names, (Lists)):
-            logging.warning("MISSING ARGUMENT: feature_names.")
-            return
-
-        if not isinstance(target_feature, (string)):
-            logging.warning
-
-        if not isinstance(target_val_upper, (Numbers)):
-            logging.warning("MISSING ARGUMENT: target_val_upper.")
-            return
-
-        if not isinstance(target_val_lower, (Numbers)):
-            logging.warning("MISSING ARGUMENT: target_val_lower.")
-            return
-
-        if grid_points_val == 0:
-            logging.warning("Incorrect number of grid pints (zero). Input value that is at least equal to 1")
-
-        if prefit == False:
-            try:
-                estimated_model.fit(X_train, y_train)
-            except:
-                logging.warning("Estimated model must have fit method.")
-
-        pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X_test, model_features=feature_names,
-                                    feature=target_feature, num_grid_points=grid_points_val, grid_type='equal',
-                                    grid_range=(1, 5))
-
-        intervals = np.zeros([grid_points_val, 3])
-        intervals_values = np.zeros([2, 2])
-
-        for i in range(0, grid_points_val):
-            intervals[i, 0] = pdp_goals.pdp[i]
-            intervals[i, 1] = pdp_goals.display_columns[i]
-            if pdp_goals.pdp[i] > target_val_lower and pdp_goals.pdp[i] < target_val_upper:
-                intervals[i, 2] = 1
-            else:
-                intervals[i, 2] = -1
-
-        flag = True
-
-        for i in range(0, grid_points_val):
-            if intervals[i, 2] == 1 and flag:
-                start = intervals[i, 1]
-                end = intervals[i, 1]
-                flag = False
-
-            elif intervals[i, 2] == 1 and i == grid_points_val - 1:
-                end = intervals[i, 1]
-                intervals_values = np.append(intervals_values, [start, end])
-                print('Interval: [', start, ' , ', end, ']1')
-
-            elif intervals[i, 2] == -1 and i == grid_points_val - 1:
-                intervals_values = np.append(intervals_values, [start, end])
-                print('Interval: [', start, ' , ', end, ']2')
-
-
-            elif intervals[i, 2] == 1 and not flag:
-                end = intervals[i, 1]
-
-            elif intervals[i, 2] == -1 and not flag:
-                flag = True
-                intervals_values = np.append(intervals_values, [start, end])
-                print('Interval: [', start, ' , ', end, ']3')
-
-        return intervals_values
-
 
 def pdp_values(estimated_model, X_train, y_train, X_test, y_test, feature_names, target_feature, target_val_upper,
-               target_val_lower, grid_points_val=30, prefit=True, verbose=False):
+               target_val_lower, grid_points_val=30, normalize_result=True, prefit=True, normalize_num=1.0,
+               verbose=False):
     # === FUNCTION SUMMARY ====================================================================================================
 
-    # Just a simple overlay of the pdpbox library function pdp_isolate for calculating PDP values of test feature, at which the
-    # target variable falls into the specified interval
+    # Just a simple overlay of the pdpbox library function pdp_isolate for calculating PDP values
 
-    # ===LIST OF ARGUMENTS: ==================================================================================================
+    # ===LIST OF ARGUMENTS: ===================================================================================================
 
     #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .feature_importances_
-    #  methods)  /// input model which we want to plot partial dependence for
+    # methods)  /// input model which we want to plot partial dependence for
 
     #  X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model
 
     #  y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model
 
-    #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for calculatig intervals
+    #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for plotting PDP
 
-    #  y  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for calculatig intervals
+    #  y  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for plotting PDP
 
     #  feature_names  ///  (list)  ///   a list of feature names
 
-    #  target_feature  ///  (string)  ///  name of the target feature to work with
+    #  target_name  ///  (string)  ///  name of the target feature to work with
 
-    #  target_val_upper  ///  (value)  ///  upper-bound value of target value
-
-    #  target_val_lower  ///  (value)  ///  lower-bound value of target value
-
-    #  grid_points_val  ///  (value)  ///  number of PDP points
+    #  normalize_num  /// (number)  ///  value for normilizing features upon  (OPTIONAL)
 
     #  prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not  (OPTIONAL)
 
@@ -520,34 +409,10 @@ def pdp_values(estimated_model, X_train, y_train, X_test, y_test, feature_names,
 
     # === OUTPUT ==============================================================================================================
 
-    # Output  ///  (numpy.array)  ///  2-coloumn array of intervals of PDP values on which target value falls into
-    # defined interval  (NEEDS MORE WORK)
+    # Output  ///  (numpy.array)  ///  outputs PDP values
 
-    if not isinstance(X, (pd.DataFrame)):
-        logging.warning("MISSING ARGUMENT: X.")
-        return
-
-    if not isinstance(y, (pd.DataFrame)):
-        logging.warning("MISSING ARGUMENT: y.")
-        return
-
-    if not isinstance(feature_names, (Lists)):
-        logging.warning("MISSING ARGUMENT: feature_names.")
-        return
-
-    if not isinstance(target_feature, (string)):
-        logging.warning
-
-    if not isinstance(target_val_upper, (Numbers)):
-        logging.warning("MISSING ARGUMENT: target_val_upper.")
-        return
-
-    if not isinstance(target_val_lower, (Numbers)):
-        logging.warning("MISSING ARGUMENT: target_val_lower.")
-        return
-
-    if grid_points_val == 0:
-        logging.warning("Incorrect number of grid pints (zero). Input value that is at least equal to 1")
+    from matplotlib import pyplot as plt
+    from pdpbox import pdp, get_dataset, info_plots
 
     if prefit == False:
         try:
@@ -560,7 +425,7 @@ def pdp_values(estimated_model, X_train, y_train, X_test, y_test, feature_names,
                                 grid_range=(1, 5))
 
     intervals = np.zeros([grid_points_val, 3])
-    intervals_values = np.zeros([2, 2])
+    intervals_values = np.zeros([])
 
     for i in range(0, grid_points_val):
         intervals[i, 0] = pdp_goals.pdp[i]
@@ -570,37 +435,89 @@ def pdp_values(estimated_model, X_train, y_train, X_test, y_test, feature_names,
         else:
             intervals[i, 2] = -1
 
+    interval_list = list()
+    average_val_list = list()
+    median_val_list = list()
+
     flag = True
+    median_list = list()
+    counter = 0;
+    summ = 0;
+    average = 0;
+    median = 0;
 
     for i in range(0, grid_points_val):
-        if intervals[i, 2] == 1 and flag:
+
+        if intervals[i, 2] == 1 and flag and i != grid_points_val - 1:
             start = intervals[i, 1]
-            end = intervals[i, 1]
+            end = intervals[i, 1]  # Начало интервала
             flag = False
+            median_list.clear()
+            summ = 0
+            counter = 0
+            median_list.clear()
+            summ = summ + start
+            median_list.append(start)
+            counter = 1;
 
-        elif intervals[i, 2] == 1 and i == grid_points_val - 1:
+        elif intervals[i, 2] == 1 and not flag and i != grid_points_val - 1:
             end = intervals[i, 1]
-            intervals_values = np.append(intervals_values, [start, end])
-            print('Interval: [', start, ' , ', end, ']1')
+            summ = summ + end
+            median_list.append(end)  # Продолжение записи интервала
+            counter = counter + 1
 
-        elif intervals[i, 2] == -1 and i == grid_points_val - 1:
-            intervals_values = np.append(intervals_values, [start, end])
-            print('Interval: [', start, ' , ', end, ']2')
+        elif intervals[i, 2] == 1 and flag and i == grid_points_val - 1:
+            start = intervals[i, 1]
+            end = intervals[i, 1]  # Единичный интервал в конце списка
+            average = start
+            median = start
+            average_val_list.append(average)
+            median_val_list.append(median)
+            median_list.clear()
+            interval_list.append((start, end))
 
-
-        elif intervals[i, 2] == 1 and not flag:
+        elif intervals[i, 2] == 1 and not flag and i == grid_points_val - 1:
             end = intervals[i, 1]
-
-        elif intervals[i, 2] == -1 and not flag:
+            summ = summ + end
+            counter = counter + 1  # запись последнего интервала, если
+            average = summ / counter  # последний элемент подходит по условиям
+            mdeian_list.append(end)
+            median = stat.median(median_list)
+            average_val_list.append(average)
+            median_val_list.append(median)
+            interval_list.append((start, end))
+            median_list.clear()
             flag = True
-            intervals_values = np.append(intervals_values, [start, end])
-            print('Interval: [', start, ' , ', end, ']3')
+
+        elif intervals[i, 2] == -1 and not flag and i != grid_points_val - 1:
+            average = summ / counter
+            median = stat.median(median_list)  # Конец интервала; его запись в список
+            median_list.clear()
+            average_val_list.append(average)
+            median_val_list.append(median)
+            interval_list.append((start, end))
+            flag = True
+
+        elif intervals[i, 2] == -1 and not flag and i == grid_points_val - 1:
+            average = summ / counter
+            median = stat.median(median_list)  # запись последнего интервала, если
+            average_val_list.append(average)  # последний элемент не подходит по условиям
+            median_val_list.append(median)
+            interval_list.append((start, end))
+
+    print(interval_list)
+    print(average_val_list)
+    print(median_val_list)
+
+    finals_list = [interval_list, average_val_list, median_val_list]
+
+    print(finals_list)
 
     return intervals_values
 
 
-def ice_values(estimated_model, X_train, y_train, X_test, y_test, feature_names, target_feature,
-               grid_val_start, grid_val_end, normalize_result=True, prefit=True, verbose=False):
+def ice_values(estimated_model, X, y, feature_names, target_feature, grid_val_start, grid_val_end,
+               normalize_result=True, prefit=True, X_train=None, y_train=None, verbose=False):
     # === FUNCTION SUMMARY ====================================================================================================
 
     # Just a simple overlay of the pdpbox library function pdp_isolate for calculating ICE values
@@ -635,19 +552,28 @@ def ice_values(estimated_model, X_train, y_train, X_test, y_test, feature_names,
     # pdp_goals.ice_lines  ///  (pandas.DataFrame)  /// outputs ICE values
 
     if not isinstance(X, (pd.DataFrame)):
-        logging.warning("MISSING ARGUMENT: X.")
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
 
     if not isinstance(y, (pd.DataFrame)):
-        logging.warning("MISSING ARGUMENT: y.")
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
         return
 
-    if not isinstance(grid_val_start, (Numbers)):
-        logging.warning("MISSING ARGUMENT: grid_val_start.")
+    if not (isinstance(grid_val_start, int) or isinstance(grid_val_start, np.int_) or isinstance(grid_val_start,
+                                                                                                 np.intc)):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: grid_val_start.")
         return
 
-    if not isinstance(grid_val_end, (Numbers)):
-        logging.warning("MISSING ARGUMENT: grid_val_end.")
+    if not (isinstance(grid_val_end, int) or isinstance(grid_val_end, np.int_) or isinstance(grid_val_end, np.intc)):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: grid_val_end.")
+
+    if isinstance(X_train, (pd.DataFrame)):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+        return
+
+    if isinstance(y_train, (pd.DataFrame)):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+        return
 
     if prefit == False:
         try:
@@ -687,19 +613,29 @@ def shap_plot(estimated_model, X, X_train='foo', y_train='foo', prefit=True, ver
     # Output  /// outputs SHAP plot
 
     if not isinstance(X, (pd.DataFrame)):
-        logging.warning("MISSING ARGUMENT: X.")
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
 
-    if prefit == False:
-        try:
-            estimated_model.fit(X_train, y_train)
-        except:
-            logging.warning("Estimated model must have fit method.")
+    f
+    isinstance(X_train, (pd.DataFrame)):
+    logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+    return
 
-    explainer = shap.Explainer(estimated_model)
-    shap_values = explainer(X)
-    print(type(shap_values))
-    shap.plots.waterfall(shap_values[0])
+
+if isinstance(y_train, (pd.DataFrame)):
+    logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+    return
+
+if prefit == False:
+    try:
+        estimated_model.fit(X_train, y_train)
+    except:
+        logging.warning("Estimated model must have fit method.")
+
+explainer = shap.Explainer(estimated_model)
+shap_values = explainer(X)
+print(type(shap_values))
+shap.plots.waterfall(shap_values[0])
 
 
 def lime_plot(estimated_model, X, X_train, y_train, max_feature_amount=10, selection_num=25, prefit=True,
@@ -732,38 +668,49 @@ def lime_plot(estimated_model, X, X_train, y_train, max_feature_amount=10, selec
     # Output  /// outputs SHAP plot
 
     if not isinstance(X, (pd.DataFrame)):
-        logging.warning("MISSING ARGUMENT: .")
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: .")
         return
 
-    if not isinstance(selection_num, (Numbers)):
-        logging.warning("MISSING ARGUMENT: selection_num.")
+    if not (isinstance(selection_num, int) or isinstance(selection_num, np.int_) or isinstance(selection_num,
+                                                                                               np.intc)) or selection_num <= 0:
+        logging.warning("INCORRECT OR MISSING ARGUMENT: selection_num.")
         return
 
     if not isinstance(max_feature_amount, (Numbers)):
-        logging.warning("MISSING ARGUMENT: max_feature_amount.")
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: max_feature_amount.")
         return
 
-    if prefit == False:
-        try:
-            estimated_model.fit(X_train, y_train)
-        except:
-            logging.warning("Estimated model must have fit method.")
-
-    explainer = LimeTabularExplainer(training_data=X.to_numpy(),
-                                     feature_names=list(X.columns),
-                                     mode=work_mode, random_state=0)
-
-    exp = explainer.explain_instance(X.to_numpy()[selection_num], estimated_model.predict,
-                                     num_features=max_feature_amount)
-
-    exp.as_pyplot_figure()
-
-    from matplotlib import pyplot as plt
-    plt.tight_layout()
+    f
+    isinstance(X_train, (pd.DataFrame)):
+    logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+    return
 
 
-def pdp_3d_plot(estimated_model, X_train, y_train, X, feature_names, feature_name_1, feature_name_2,
-                prefit=True, verbose=False):
+if isinstance(y_train, (pd.DataFrame)):
+    logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+    return
+
+if prefit == False:
+    try:
+        estimated_model.fit(X_train, y_train)
+    except:
+        logging.warning("Estimated model must have fit method.")
+
+explainer = LimeTabularExplainer(training_data=X.to_numpy(),
+                                 feature_names=list(X.columns),
+                                 mode=work_mode, random_state=0)
+
+exp = explainer.explain_instance(X.to_numpy()[selection_num], estimated_model.predict, num_features=max_feature_amount)
+
+exp.as_pyplot_figure()
+
+from matplotlib import pyplot as plt
+
+plt.tight_layout()
+
+
+def pdp_3d_plot(estimated_model, X, feature_names, feature_name_1, feature_name_2,
+                prefit=True, X_train=None, y_train=None, verbose=False):
     # === FUNCTION SUMMARY ====================================================================================================
 
     # Just a simple overlay of the shap library method  waterfall for calculating 3D PDP plot for 2 features' interaction
@@ -792,15 +739,15 @@ def pdp_3d_plot(estimated_model, X_train, y_train, X, feature_names, feature_nam
     # Output  /// outputs 3D "heat" PDP plot
 
     if not isinstance(X, (pd.DataFrame)):
-        logging.warning("MISSING ARGUMENT: .")
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
 
     if not isinstance(feature_name_1, (string)):
-        logging.warning("MISSING ARGUMENT: feature_name_1.")
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_name_1.")
         return
 
     if not isinstance(feature_name_2, (string)):
-        logging.warning("MISSING ARGUMENT: feature_name_2.")
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_name_2.")
         return
 
     pdp_goal = pdp.pdp_interact(model=estimated_model, dataset=X, model_features=feature_names,
@@ -815,9 +762,19 @@ def pdp_3d_plot(estimated_model, X_train, y_train, X, feature_names, feature_nam
     fig.show()
 
 
- _____                       _         _                         __     __      __      _
+'''
+
+_____                       _         _                         __     __      __      _ 
 (_   _)                     ( )       ( )_            _  _     /'__`\ /' _`\  /'__`\  /' )
-  | |   __   _ __   _ _    _| |   _ _ | ,_)   _ _    ( )( )   (_)  ) )| ( ) |(_)  ) )(_, |
-  | | /'__`\( '__)/'_` ) /'_` | /'_` )| |   /'_` )   | || |      /' / | | | |   /' /   | |
-  | |(  ___/| |  ( (_| |( (_| |( (_| || |_ ( (_| |   | || |    /' /( )| (_) | /' /( )  | |
-  (_)`\____)(_)  `\__,_)`\__,_)`\__,_)`\__)`\__,_)   | || |   (_____/'`\___/'(_____/'  (_)
+ | |   __   _ __   _ _    _| |   _ _ | ,_)   _ _    ( )( )   (_)  ) )| ( ) |(_)  ) )(_, |
+ | | /'__`\( '__)/'_` ) /'_` | /'_` )| |   /'_` )   | || |      /' / | | | |   /' /   | |
+ | |(  ___/| |  ( (_| |( (_| |( (_| || |_ ( (_| |   | || |    /' /( )| (_) | /' /( )  | |
+ (_)`\____)(_)  `\__,_)`\__,_)`\__,_)`\__)`\__,_)   | || |   (_____/'`\___/'(_____/'  (_)
+
+'''
+
+
+
+
+
+
