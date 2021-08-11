@@ -574,10 +574,9 @@ def pdp_values(estimated_model, X, y, feature_names, target_feature, target_val_
     print(median_val_list)
     
     finals_list = [interval_list, average_val_list, median_val_list]
+
     
-    print(finals_list)
-    
-    return intervals_values
+    return finals_list
 
 def ice_values(estimated_model, X, y, feature_names, target_feature, grid_val_start, grid_val_end, 
                normalize_result=True, prefit=True, X_train = None, y_train = None, verbose=False):
