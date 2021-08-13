@@ -1,12 +1,6 @@
-#!/usr/bin/env python
-# coding: utf-8
-
 # Ultimate model explanation library
 # 
 # Have fun!
-
-# In[9]:
-
 
 #importing all nessessary libraries beforehand
 
@@ -14,29 +8,17 @@ import time
 import shap
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import ipywidgets as widgets
-import logging as log
+import logging
 
-
-
+import statistics as stat
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import  GradientBoostingRegressor
-from sklearn.ensemble import  RandomForestRegressor
-from sklearn.inspection import partial_dependence
-from sklearn.inspection import plot_partial_dependence
-from matplotlib import pyplot as plt
-from pdpbox import pdp, get_dataset, info_plots
 from pdpbox import info_plots
 from PyALE import ale
-from matplotlib import pyplot as plt
-from pdpbox import pdp, get_dataset, info_plots
-from lime.lime_tabular import LimeTabularExplainer
-from matplotlib import pyplot as plt
 from sklearn.metrics import mean_squared_error
+from lime.lime_tabular import LimeTabularExplainer
 from matplotlib import pyplot as plt
 from pdpbox import pdp, get_dataset, info_plots
-from lime.lime_tabular import LimeTabularExplainer
 
 
 def get_loco_feature_importances(estimated_model, X, y, feature_names=None, normalize_result=True, normalize_num=1.0, 
@@ -45,7 +27,7 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
     
     
    
-    # === FUNCTION SUMMARY ====================================================================================================
+    # === FUNCTION SUMMARY ============================================================================================
 
     # Input: Trained model estimated_model, feature matrix X, target value y, error measure 
 
@@ -59,7 +41,7 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
     
     # TL;DR - this function calculates LOCO feature importances
 
-    # ===LIST OF ARGUMENTS: ===================================================================================================
+    # ===LIST OF ARGUMENTS: ===========================================================================================
     
     #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)  /// 
     #  input model which we want to calculate PFI for
@@ -85,22 +67,23 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
     #  verbose  ///  (bool) (OPTIONAL- REMOVAL REQUIRED)  ///  option for outputting detailed 
     
     
-    # === OUTPUT ==============================================================================================================
+    # === OUTPUT ======================================================================================================
     
     # Output  /// (numpy.array) ///  function returns LOCO feature importances
     
-    if estimated_mode == None 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+    if estimated_model is None:
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_model.")
+        return
     
     if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+        return
     
     if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-            return  
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+        return
     
-    if prefit == False:
+    if not prefit:
         try:
             estimated_model.fit(X_train, y_train)
         except:
@@ -118,7 +101,8 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
     if metrics not in metrics_dict.keys():
         logging.warning("Incorrect metrics.")
         return
-                                                                    #checking inputs
+
+    # checking inputs
     df = None
     if isinstance(X, (np.ndarray)):
         if feature_names is None:
@@ -139,33 +123,35 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
         estimated_model.fit(df, y)
     except:
         logging.warning("Estimated model must have fit method.")
+        return
 
     try:   
-        prediction = estimated_model.predict(df)                         #training model to calculate initial error
+        prediction = estimated_model.predict(df) # training model to calculate initial error
     except:
         logging.warning("Estimated model must have predict method.")
+        return
 
     start_loss = metrics_dict[metrics](y, prediction)
 
     for i in range(n_features):
         current_feature = feature_names[i]
         
-        if data_split == True:
+        if data_split:
         
-             df_temp = df.copy()
-             df_train, df_test, y_train, y_test = train_test_split(df_temp, y, test_size=0.23, random_state=0)
+            df_temp = df.copy()
+            df_train, df_test, y_train, y_test = train_test_split(df_temp, y, test_size=0.23, random_state=0)
         
-             df_train = df_train.drop(current_feature,  axis=1) 
-             df_test = df_test.drop(current_feature,  axis=1) 
+            df_train = df_train.drop(current_feature,  axis=1)
+            df_test = df_test.drop(current_feature,  axis=1)
         
-             estimated_model.fit(df_train, y_train)
+            estimated_model.fit(df_train, y_train)
         
-             prediction = estimated_model.predict(df_test)
-             feature_loss = metrics_dict[metrics](y_test, prediction)
+            prediction = estimated_model.predict(df_test)
+            feature_loss = metrics_dict[metrics](y_test, prediction)
         
         else:
             df_temp = df.copy()
-            df_temp = df_temp.drop(current_feature, axis=1)                  #calculating error per every feature's eclusion
+            df_temp = df_temp.drop(current_feature, axis=1)   # calculating error per every feature's eclusion
         
             estimated_model.fit(df_temp, y)
         
@@ -197,7 +183,7 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
                                 error_type='divide', metrics='mean_squared_error', shuffle_num=3, verbose=False,
                                 prefit = True, X_train = None, y_train = None):    
     
-    # === FUNCTION SUMMARY ====================================================================================================
+    # === FUNCTION SUMMARY ============================================================================================
 
     #  1) Input trained model, table of features and coloumn of target values
     #  2) Make a prediction and evaluate start loss array with any metrics acceptable
@@ -208,7 +194,7 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
     
     # TL;DR - this function calculates PFI feature importances
 
-    # ===LIST OF ARGUMENTS: ===================================================================================================
+    # ===LIST OF ARGUMENTS: ===========================================================================================
     
     #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)  /// 
     #  input model which we want to calculate PFI for
@@ -227,26 +213,28 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
     
     #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed 
        
-    # === OUTPUT ==============================================================================================================
+    # === OUTPUT ======================================================================================================
     
     # Output  /// (numpy.array) ///  function returns PFI feature importances  
     
-    if estimated_mode == None 
+    if estimated_model is None:
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        return
     
     if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+        return
     
     if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-            return   
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+        return
     
-    if prefit == False:
+    if not prefit:
         try:
             estimated_model.fit(X_train, y_train)
         except:
             logging.warning("Estimated model must have fit method.")
+            return
     
     if error_type != 'divide' and error_type != 'subtract':
         logging.warning("Incorrect error type.")
@@ -266,7 +254,7 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
         return
     
     df = None
-    if isinstance(X, (np.ndarray)):                                #check inputs
+    if isinstance(X, (np.ndarray)):
         if feature_names is None:
             feature_names = np.array(range(X.shape[1]))
         df = pd.DataFrame(data=X.to_numpy(), columns=feature_names)
@@ -287,18 +275,20 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
         estimated_model.fit(df, y)
     except:
         logging.warning("Estimated model must have fit method.")
+        return
         
     try:
         prediction = estimated_model.predict(df)
     except:
         logging.warning("Estimated model must have predict method.")
+        return
      
     start_loss = metrics_dict[metrics](y, prediction)
     
     for i in range(n_features):
         current_feature = feature_names[i]
         
-        #shuffling values to kill any correllation
+        # shuffling values to kill any correllation
         
         for j in range(shuffle_num):
             df_shuffled = df.copy()
@@ -327,11 +317,11 @@ def ice_plot_2D(estimated_model, X, y, feature_names, target_feature, prefit=Tru
                 X_train=None, y_train=None, verbose=False):
     
     
-    # === FUNCTION SUMMARY ====================================================================================================
+    # === FUNCTION SUMMARY ============================================================================================
 
     # Just a simple overlay of the pdpbox library function pdp_isolate for PDP/ICE plotting
 
-    # ===LIST OF ARGUMENTS: ===================================================================================================
+    # ===LIST OF ARGUMENTS: ===========================================================================================
     
     #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .feature_importances_ 
     #  methods)  /// input model which we want to plot partial dependence for
@@ -352,63 +342,60 @@ def ice_plot_2D(estimated_model, X, y, feature_names, target_feature, prefit=Tru
     
     #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
        
-    # === OUTPUT ==============================================================================================================
+    # === OUTPUT ======================================================================================================
     
     # Output  ///  plots a PDP plot
     
-    if estimated_mode == None 
+    if estimated_model is None:
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        return
     
     if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
+        return
         
     if not (isinstance(y, (pd.DataFrame)) or isinstance(y, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
+        return
     
     if not isinstance(feature_names, (list)): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_names.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_names.")
+        return
     
     if not isinstance(target_feature, (str)): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: target_feature.")
-            return    
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: target_feature.")
+        return
     
     if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+        return
     
     if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-            return  
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+        return
     
-    from matplotlib import pyplot as plt
-    from pdpbox import pdp, get_dataset, info_plots
-    
-    if prefit == False:
+    if not prefit:
         try:
             estimated_model.fit(X_train, y_train)
         except:
             logging.warning("Estimated model must have fit method.")
-            
-    
 
-    pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X_test, model_features=feature_names, 
+    pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names,
                             feature=target_feature, num_grid_points=30, grid_type='equal', grid_range=(1, 5))
 
     pdp.pdp_plot(pdp_goals, target_feature)
     plt.show()
 
+
 def pdp_values(estimated_model, X, y, feature_names, target_feature, target_val_upper, target_val_lower, grid_points_val = 30,
                normalize_result=True, prefit=True, X_train = None, y_train = None, normalize_num=1.0, verbose=False):
     
     
-    # === FUNCTION SUMMARY ====================================================================================================
+    # === FUNCTION SUMMARY ============================================================================================
 
     # Just a simple overlay of the pdpbox library function pdp_isolate for calculating PDP values
 
-    # ===LIST OF ARGUMENTS: ===================================================================================================
+    # ===LIST OF ARGUMENTS: ===========================================================================================
     
     #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .feature_importances_ 
     #  methods)  /// input model which we want to plot partial dependence for
@@ -431,13 +418,14 @@ def pdp_values(estimated_model, X, y, feature_names, target_feature, target_val_
     
     #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
     
-    # === OUTPUT ==============================================================================================================
+    # === OUTPUT ======================================================================================================
     
     # Output  ///  (list([tuple], value, value))  ///  outputs the intervals of feature values where the target variable falls 
     # within the specified interval, the average and median within these intervals  
     
-    if estimated_mode == None:
+    if estimated_model is None:
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        return
     
     if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
@@ -469,13 +457,9 @@ def pdp_values(estimated_model, X, y, feature_names, target_feature, target_val_
     
     if not(isinstance(target_val_lower, int) or isinstance(target_val_lower, np.int_) or isinstance(target_val_lower, np.intc)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: target_val_lower.")
-            return      
+            return
     
-    
-    from matplotlib import pyplot as plt
-    from pdpbox import pdp, get_dataset, info_plots
-    
-    if prefit == False:
+    if not prefit:
         try:
             estimated_model.fit(X_train, y_train)
         except:
@@ -483,10 +467,8 @@ def pdp_values(estimated_model, X, y, feature_names, target_feature, target_val_
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names, 
                             feature=target_feature, num_grid_points=grid_points_val, grid_type='equal', grid_range=(1, 5))
-    
-    
+
     intervals = np.zeros([grid_points_val, 3])
-    intervals_values = np.zeros([])
     
     for i in range (0, grid_points_val): 
         intervals[i, 0] = pdp_goals.pdp[i]
@@ -494,102 +476,74 @@ def pdp_values(estimated_model, X, y, feature_names, target_feature, target_val_
         if pdp_goals.pdp[i] > target_val_lower and pdp_goals.pdp[i] < target_val_upper:
             intervals[i, 2] = 1
         else:
-            intervals[i, 2] =-1
-            
-            
+            intervals[i, 2] = -1
 
     interval_list = list()
     average_val_list = list()
     median_val_list = list()
-               
-    flag =  True
-    median_list = list()
-    counter = 0;
-    summ = 0;
-    average = 0;
-    median = 0;
+
+    flag = True
+    current_interval_list = np.array([])
+    start = 0
+    end = 0
     
-    for i in range(0, grid_points_val): 
-        
+    for i in range(0, grid_points_val):
         if intervals[i, 2] == 1 and flag and i != grid_points_val-1:
             start = intervals[i, 1]
-            end = intervals[i, 1]                                                # Начало интервала
-            flag = False   
-            median_list.clear()
-            summ = 0
-            counter = 0
-            median_list.clear()
-            summ = summ + start
-            median_list.append(start)
-            counter = 1;
-                 
+            end = intervals[i, 1]  # Начало интервала
+            flag = False
+            current_interval_list = np.empty(0)
+            current_interval_list = np.append(current_interval_list, [start])
+
         elif intervals[i, 2] == 1 and not flag and i != grid_points_val-1:
-            end = intervals[i, 1]    
-            summ = summ + end  
-            median_list.append(end)                                            # Продолжение записи интервала
-            counter = counter + 1
+            end = intervals[i, 1]
+            current_interval_list = np.append(current_interval_list, [end])  # Продолжение записи интервала
              
         elif intervals[i, 2] == 1 and flag and i == grid_points_val-1:
-            start = intervals[i, 1]
-            end = intervals[i, 1]                                      #Единичный интервал в конце списка
-            average = start
-            median = start
-            average_val_list.append(average)
-            median_val_list.append(median)
-            median_list.clear()
-            interval_list.append((start, end))
+            start = intervals[i, 1]  # Единичный интервал в конце списка
+            average_val_list.append(start)
+            median_val_list.append(start)
+            current_interval_list.clear()
+            interval_list.append((start, start))
 
         elif intervals[i, 2] == 1 and not flag and i == grid_points_val-1:
-            end = intervals[i, 1]      
-            summ = summ + end
-            counter = counter + 1                                       # запись последнего интервала, если 
-            average = summ/counter                                       # последний элемент подходит по условиям  
-            mdeian_list.append(end) 
-            median = stat.median(median_list)  
-            average_val_list.append(average)
-            median_val_list.append(median)
-            interval_list.append((start, end))  
-            median_list.clear()
-            flag = True
-            
-        elif intervals[i, 2] == -1 and not flag and i != grid_points_val-1:   
-            average = summ/counter
-            median = stat.median(median_list)                 # Конец интервала; его запись в список
-            median_list.clear()
-            average_val_list.append(average)
-            median_val_list.append(median)
+            # запись последнего интервала, если последний элемент подходит по условиям
+            end = intervals[i, 1]
+            current_interval_list = np.append(current_interval_list, [end])
+            average_val_list.append(np.average(current_interval_list))
+            median_val_list.append(np.median(current_interval_list))
             interval_list.append((start, end))
+            current_interval_list = np.empty(0)
             flag = True
             
-        elif intervals[i, 2] == -1 and not flag and i == grid_points_val-1: 
-            average = summ/counter
-            median = stat.median(median_list)                               # запись последнего интервала, если
-            average_val_list.append(average)                                # последний элемент не подходит по условиям
-            median_val_list.append(median)
-            interval_list.append((start, end))   
-           
+        elif intervals[i, 2] == -1 and not flag and i != grid_points_val-1:
+            # Конец интервала; его запись в список
+            average_val_list.append(np.average(current_interval_list))
+            median_val_list.append(np.median(current_interval_list))
+            interval_list.append((start, end))
+            current_interval_list = np.empty(0)
+            flag = True
 
     print(interval_list)
     print(average_val_list)
     print(median_val_list)
     
     finals_list = [interval_list, average_val_list, median_val_list]
-
     
     return finals_list
 
+
 def ice_values(estimated_model, X, y, feature_names, target_feature, grid_val_start, grid_val_end, 
                normalize_result=True, prefit=True, X_train = None, y_train = None, verbose=False):
-    
-    
-    # === FUNCTION SUMMARY ====================================================================================================
+
+    # === FUNCTION SUMMARY =========================================================================================
 
     # Just a simple overlay of the pdpbox library function pdp_isolate for calculating ICE values
 
-    # ===LIST OF ARGUMENTS: ===================================================================================================
+    # ===LIST OF ARGUMENTS: ========================================================================================
     
     #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .feature_importances_ 
-    #methods)  /// input model which we want to calculate ICE values for
+    # methods)  /// input model which we want to calculate ICE values for
     
     #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for plotting PDP
     
@@ -611,36 +565,36 @@ def ice_values(estimated_model, X, y, feature_names, target_feature, grid_val_st
     
     #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
        
-    # === OUTPUT ==============================================================================================================
+    # === OUTPUT ======================================================================================================
     
     # pdp_goals.ice_lines  ///  (pandas.DataFrame)  /// outputs ICE values
      
-    if estimated_mode == None:
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.") 
+    if estimated_model is None:
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        return
     
     if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
+        return
         
     if not (isinstance(y, (pd.DataFrame)) or isinstance(y, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
+        return
     
     if not(isinstance(grid_val_start, int) or isinstance(grid_val_start, np.int_) or isinstance(grid_val_start, np.intc)): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: grid_val_start.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: grid_val_start.")
+        return
     
     if not(isinstance(grid_val_end, int) or isinstance(grid_val_end, np.int_) or isinstance(grid_val_end, np.intc)): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: grid_val_end.")        
-            
-     
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: grid_val_end.")
+
     if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+        return
         
     if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+        return
     
     if prefit == False:
         try:
@@ -648,13 +602,14 @@ def ice_values(estimated_model, X, y, feature_names, target_feature, grid_val_st
         except:
             logging.warning("Estimated model must have fit method.")
 
-    pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X_test, model_features=feature_names, 
+    pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names,
                             feature=target_feature, num_grid_points=30, grid_type='equal', 
                             grid_range=(grid_val_start, grid_val_end))
 
     return pdp_goals.ice_lines
 
-def shap_plot(estimated_model, X, prefit = True, X_train = None, y_train = None, verbose=False):
+
+def shap_plot(estimated_model, X, prefit=True, X_train=None, y_train=None, verbose=False):
 
    
     # === FUNCTION SUMMARY ====================================================================================================
@@ -680,22 +635,23 @@ def shap_plot(estimated_model, X, prefit = True, X_train = None, y_train = None,
     
     # Output  /// outputs SHAP plot
     
-    if estimated_mode == None:
+    if estimated_model is None:
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        return
     
     if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
+        return
     
     if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+        return
         
     if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+        return
     
-    if prefit == False:
+    if not prefit:
         try:
             estimated_model.fit(X_train, y_train)
         except:
@@ -710,12 +666,11 @@ def shap_plot(estimated_model, X, prefit = True, X_train = None, y_train = None,
 def lime_plot(estimated_model, X, max_feature_amount = 10, selection_num = 25, prefit = True, 
               X_train = None, y_train = None, work_mode = 'regression', verbose = False):
 
-     
-    # === FUNCTION SUMMARY ====================================================================================================
+    # === FUNCTION SUMMARY ============================================================================================
 
     # Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
 
-    # ===LIST OF ARGUMENTS: ===================================================================================================
+    # ===LIST OF ARGUMENTS: ===========================================================================================
     
     #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict method)  
     #/// input model which we want to plot LIME for
@@ -738,30 +693,31 @@ def lime_plot(estimated_model, X, max_feature_amount = 10, selection_num = 25, p
     
     # Output  /// outputs SHAP plot
     
-    if estimated_mode == None:
+    if estimated_model is None:
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        return
     
     if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
+        return
     
     if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+        return
         
     if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+        return
     
     if not(isinstance(max_feature_amount, int) or isinstance(max_feature_amount, np.int_) or isinstance(max_feature_amount, np.intc)) or max_feature_amount <= 0: 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: max_feature_amount.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: max_feature_amount.")
+        return
         
     if not(isinstance(selection_num, int) or isinstance(selection_num, np.int_) or isinstance(selection_num, np.intc)) or selection_num <= 0: 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: selection_num.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: selection_num.")
+        return
     
-    if prefit == False:
+    if not prefit:
         try:
             estimated_model.fit(X_train, y_train)
         except:
@@ -782,12 +738,11 @@ def lime_plot(estimated_model, X, max_feature_amount = 10, selection_num = 25, p
 def pdp_3d_plot(estimated_model, X, feature_names, feature_name_1, feature_name_2, 
                 prefit = True, X_train = None, y_train = None, verbose = False):
 
-     
-    # === FUNCTION SUMMARY ====================================================================================================
+    # === FUNCTION SUMMARY ============================================================================================
 
     # Just a simple overlay of the shap library method  waterfall for calculating 3D PDP plot for 2 features' interaction
 
-    # ===LIST OF ARGUMENTS: ===================================================================================================
+    # ===LIST OF ARGUMENTS: ===========================================================================================
     
     #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict method)  
     #/// input model which we want to plot LIME for
@@ -810,30 +765,30 @@ def pdp_3d_plot(estimated_model, X, feature_names, feature_name_1, feature_name_
     
     # Output  /// outputs 3D "heat" PDP plot
      
-    if estimated_mode == None:
+    if estimated_model is None:
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        return
     
     if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
+        return
     
     if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+        return
         
     if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-            return
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+        return
              
-    if not isinstance(feature_name_1, (string)): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_name_1.")
-            return
+    if not isinstance(feature_name_1, (str)):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_name_1.")
+        return
     
-    if not isinstance(feature_name_2, (string)): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_name_2.")
-            return
+    if not isinstance(feature_name_2, (str)):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_name_2.")
+        return
 
-  
     pdp_goal = pdp.pdp_interact(model=estimated_model, dataset=X, model_features=feature_names, 
                                   features=[feature_name_1, feature_name_2])
     
