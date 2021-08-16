@@ -8,12 +8,9 @@ import time
 import shap
 import numpy as np
 import pandas as pd
-import ipywidgets as widgets
 import logging
 
-import statistics as stat
 from sklearn.model_selection import train_test_split
-from pdpbox import info_plots
 from PyALE import ale
 from sklearn.metrics import mean_squared_error
 from lime.lime_tabular import LimeTabularExplainer
@@ -22,19 +19,16 @@ from pdpbox import pdp, get_dataset, info_plots
 
 
 def get_loco_feature_importances(estimated_model, X, y, feature_names=None, normalize_result=True, normalize_num=1.0, 
-                                 error_type='divide', metrics='mean_squared_error', verbose=False, data_split=False,
-                                 prefit = True, X_train = None, y_train = None):
-    
-    
+                                 error_type='divide', metrics='mean_squared_error', verbose=False, data_split=False):
    
     # === FUNCTION SUMMARY ============================================================================================
 
     # Input: Trained model estimated_model, feature matrix X, target value y, error measure 
 
-    #  1) Input trained model, table of features and coloumn of target values
+    #  1) Input trained model, table of features and column of target values
     #  2) Make a prediction and evaluate start loss array with any metrics acceptable
-    #  3) Reshape your model with datasets with every feature alternately excluded and write error for every excluded feature 
-    #    into separate array
+    #  3) Reshape your model with datasets with every feature alternately excluded and write error for every
+    #  excluded feature into separate array
     #  4) For every feature divide the error vector for the excluded feature by the error vector of the full dataset or 
     #    subtract the error vector of the full dataset from the error vector for the excluded feature 
     #  5) Normalize the result vector if needed
@@ -43,8 +37,8 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
 
     # ===LIST OF ARGUMENTS: ===========================================================================================
     
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)  /// 
-    #  input model which we want to calculate PFI for
+    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)
+    #  /// input model which we want to calculate PFI for
     
     #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values
     
@@ -54,7 +48,8 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
     
     #  metrics  ///  (string - any metrics from  metrics_dict.keys())  ///  option for choosing error calculation method
     
-    #  normalize_num  /// (number)  ///  value for normilizing features upon calculating error per every feature's eclusion (OPTIONAL)
+    #  normalize_num  /// (number)
+    #  ///  value for normilizing features upon calculating error per every feature's eclusion (OPTIONAL)
     
     #  data_split  ///  (bool)   ///  option for splitting data when calculatig 
     
@@ -75,22 +70,16 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_model.")
         return
     
-    if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+    if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X.")
         return
     
-    if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+    if not (isinstance(y, (pd.DataFrame)) or isinstance(y, (np.ndarray))):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
         return
-    
-    if not prefit:
-        try:
-            estimated_model.fit(X_train, y_train)
-        except:
-            logging.warning("Estimated model must have fit method.")
             
     if error_type != 'divide' and error_type != 'subtract':
-        print("Incorrect error type.")
+        logging.warning("Incorrect error_type: must be divide or subtract.")
         return
     
     if normalize_num <= 0:
@@ -113,7 +102,7 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
         if feature_names is None:
             feature_names = np.array(X.columns)
     else:
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
+        logging.warning("INCORRECT ARGUMENT TYPE: X.")
         return
     
     n_features = df.shape[1]
@@ -148,6 +137,8 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
         
             prediction = estimated_model.predict(df_test)
             feature_loss = metrics_dict[metrics](y_test, prediction)
+
+            result[i] += feature_loss
         
         else:
             df_temp = df.copy()
@@ -185,7 +176,7 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
     
     # === FUNCTION SUMMARY ============================================================================================
 
-    #  1) Input trained model, table of features and coloumn of target values
+    #  1) Input trained model, table of features and column of target values
     #  2) Make a prediction and evaluate start loss array with any metrics acceptable
     #  3) Calculate the importance of features by dividing the vector of errors of the dataset with shuffled 
     #     values by the vector of errors of the original dataset or subtracting the vector of error values of 
@@ -196,8 +187,8 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
 
     # ===LIST OF ARGUMENTS: ===========================================================================================
     
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)  /// 
-    #  input model which we want to calculate PFI for
+    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)
+    #  /// input model which we want to calculate PFI for
     
     #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values
     
@@ -209,7 +200,7 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
     
     #  shuffle_num  ///  number  ///  number of shuffles of selected feature
     
-    #  normalize_num  /// (number)  ///  value for normilizing features upon
+    #  normalize_num  /// (number)  ///  value for normalizing features upon
     
     #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed 
        
@@ -221,23 +212,31 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
         return
     
-    if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+    if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X.")
         return
     
-    if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+    if not (isinstance(y, (pd.DataFrame)) or isinstance(y, (np.ndarray))):
+        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
         return
     
     if not prefit:
+        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+            return
+
+        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+            return
+
         try:
             estimated_model.fit(X_train, y_train)
         except:
             logging.warning("Estimated model must have fit method.")
             return
-    
+
     if error_type != 'divide' and error_type != 'subtract':
-        logging.warning("Incorrect error type.")
+        logging.warning("Incorrect error_type: must be divide or subtract.")
         return
     
     if shuffle_num <= 0:
@@ -270,19 +269,13 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
     
     n_features = df.shape[1]
     result = np.zeros(n_features)
-    
-    try:
-        estimated_model.fit(df, y)
-    except:
-        logging.warning("Estimated model must have fit method.")
-        return
-        
+
     try:
         prediction = estimated_model.predict(df)
     except:
         logging.warning("Estimated model must have predict method.")
         return
-     
+
     start_loss = metrics_dict[metrics](y, prediction)
     
     for i in range(n_features):
@@ -313,22 +306,19 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
     return result
 
 
-def ice_plot_2D(estimated_model, X, y, feature_names, target_feature, prefit=True, 
+def ice_plot_2D(estimated_model, X, feature_names, target_feature, prefit=True, grid_points_val=30,
                 X_train=None, y_train=None, verbose=False):
-    
-    
+
     # === FUNCTION SUMMARY ============================================================================================
 
     # Just a simple overlay of the pdpbox library function pdp_isolate for PDP/ICE plotting
 
     # ===LIST OF ARGUMENTS: ===========================================================================================
     
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .feature_importances_ 
-    #  methods)  /// input model which we want to plot partial dependence for
+    #  estimated_model  ///  sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)
+    #  /// input model which we want to plot partial dependence for
     
     #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for plotting PDP
-    
-    #  y  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for plotting PDP 
     
     #  feature_names  ///  (list)  ///   a list of feature names 
     
@@ -353,62 +343,53 @@ def ice_plot_2D(estimated_model, X, y, feature_names, target_feature, prefit=Tru
     if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
-        
-    if not (isinstance(y, (pd.DataFrame)) or isinstance(y, (np.ndarray))): 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
-        return
     
-    if not isinstance(feature_names, (list)): 
+    if not isinstance(feature_names, (list)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_names.")
         return
     
-    if not isinstance(target_feature, (str)): 
+    if not isinstance(target_feature, (str)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: target_feature.")
         return
     
-    if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
-        return
-    
-    if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-        return
-    
     if not prefit:
+        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+            return
+
+        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+            return
+
         try:
             estimated_model.fit(X_train, y_train)
         except:
             logging.warning("Estimated model must have fit method.")
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names,
-                            feature=target_feature, num_grid_points=30, grid_type='equal', grid_range=(1, 5))
+                            feature=target_feature, num_grid_points=grid_points_val, grid_type='equal')
 
     pdp.pdp_plot(pdp_goals, target_feature)
     plt.show()
 
 
-def pdp_values(estimated_model, X, y, feature_names, target_feature, target_val_upper, target_val_lower, grid_points_val = 30,
-               normalize_result=True, prefit=True, X_train = None, y_train = None, normalize_num=1.0, verbose=False):
-    
-    
+def pdp_values(estimated_model, X, feature_names, target_feature, target_val_upper, target_val_lower,
+               grid_points_val=30, prefit=True, X_train=None, y_train=None, verbose=False):
+
     # === FUNCTION SUMMARY ============================================================================================
 
     # Just a simple overlay of the pdpbox library function pdp_isolate for calculating PDP values
 
     # ===LIST OF ARGUMENTS: ===========================================================================================
     
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .feature_importances_ 
-    #  methods)  /// input model which we want to plot partial dependence for
+    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)
+    #  /// input model which we want to plot partial dependence for
     
     #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for plotting PDP
-    
-    #  y  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for plotting PDP 
     
     #  feature_names  ///  (list)  ///   a list of feature names 
     
     #  target_name  ///  (string)  ///  name of the target feature to work with
-    
-    #  normalize_num  /// (number)  ///  value for normilizing features upon  (OPTIONAL)
     
     #  prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not  (OPTIONAL)
     
@@ -430,10 +411,6 @@ def pdp_values(estimated_model, X, y, feature_names, target_feature, target_val_
     if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
             return
-        
-    if not (isinstance(y, (pd.DataFrame)) or isinstance(y, (np.ndarray))): 
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
-            return
     
     if not isinstance(feature_names, (list)): 
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_names.")
@@ -441,15 +418,7 @@ def pdp_values(estimated_model, X, y, feature_names, target_feature, target_val_
     
     if not isinstance(target_feature, (str)): 
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: target_feature.")
-            return    
-    
-    if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
             return
-    
-    if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-            return  
         
     if not(isinstance(target_val_upper, int) or isinstance(target_val_upper, np.int_) or isinstance(target_val_upper, np.intc)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : target_val_upper.")
@@ -460,13 +429,21 @@ def pdp_values(estimated_model, X, y, feature_names, target_feature, target_val_
             return
     
     if not prefit:
+        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+            return
+
+        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+            return
+
         try:
             estimated_model.fit(X_train, y_train)
         except:
             logging.warning("Estimated model must have fit method.")
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names, 
-                            feature=target_feature, num_grid_points=grid_points_val, grid_type='equal', grid_range=(1, 5))
+                            feature=target_feature, num_grid_points=grid_points_val, grid_type='equal')
 
     intervals = np.zeros([grid_points_val, 3])
     
@@ -533,8 +510,8 @@ def pdp_values(estimated_model, X, y, feature_names, target_feature, target_val_
     return finals_list
 
 
-def ice_values(estimated_model, X, y, feature_names, target_feature, grid_val_start, grid_val_end, 
-               normalize_result=True, prefit=True, X_train = None, y_train = None, verbose=False):
+def ice_values(estimated_model, X, feature_names, target_feature, grid_val_start=None, grid_val_end=None,
+               prefit=True, X_train=None, y_train=None, verbose=False):
 
     # === FUNCTION SUMMARY =========================================================================================
 
@@ -542,8 +519,8 @@ def ice_values(estimated_model, X, y, feature_names, target_feature, grid_val_st
 
     # ===LIST OF ARGUMENTS: ========================================================================================
     
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .feature_importances_ 
-    # methods)  /// input model which we want to calculate ICE values for
+    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)
+    # /// input model which we want to calculate ICE values for
     
     #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for plotting PDP
     
@@ -576,47 +553,49 @@ def ice_values(estimated_model, X, y, feature_names, target_feature, grid_val_st
     if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
-        
-    if not (isinstance(y, (pd.DataFrame)) or isinstance(y, (np.ndarray))): 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
-        return
-    
-    if not(isinstance(grid_val_start, int) or isinstance(grid_val_start, np.int_) or isinstance(grid_val_start, np.intc)): 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: grid_val_start.")
-        return
-    
-    if not(isinstance(grid_val_end, int) or isinstance(grid_val_end, np.int_) or isinstance(grid_val_end, np.intc)): 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: grid_val_end.")
 
-    if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))): 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
-        return
-        
-    if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))): 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-        return
+    if grid_val_start is not None and grid_val_end is not None:
+        if not(isinstance(grid_val_start, int) or isinstance(grid_val_start, np.int_) or isinstance(grid_val_start, np.intc)):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: grid_val_start.")
+            return
+
+        if not(isinstance(grid_val_end, int) or isinstance(grid_val_end, np.int_) or isinstance(grid_val_end, np.intc)):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: grid_val_end.")
+            return
+
+        g_range = (grid_val_start, grid_val_end)
+
+    else:
+        g_range = None
     
-    if prefit == False:
+    if not prefit:
+        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+            return
+
+        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+            return
+
         try:
             estimated_model.fit(X_train, y_train)
         except:
             logging.warning("Estimated model must have fit method.")
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names,
-                            feature=target_feature, num_grid_points=30, grid_type='equal', 
-                            grid_range=(grid_val_start, grid_val_end))
+                            feature=target_feature, num_grid_points=30, grid_type='equal',
+                            grid_range=g_range)
 
     return pdp_goals.ice_lines
 
 
 def shap_plot(estimated_model, X, prefit=True, X_train=None, y_train=None, verbose=False):
 
-   
-    # === FUNCTION SUMMARY ====================================================================================================
+    # === FUNCTION SUMMARY ============================================================================================
 
     # Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
 
-    # ===LIST OF ARGUMENTS: ===================================================================================================
+    # ===LIST OF ARGUMENTS: ===========================================================================================
     
     #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit method)  
     #  /// input model which we want to plot SHAP for
@@ -631,7 +610,7 @@ def shap_plot(estimated_model, X, prefit=True, X_train=None, y_train=None, verbo
     
     #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
        
-    # === OUTPUT ==============================================================================================================
+    # === OUTPUT ======================================================================================================
     
     # Output  /// outputs SHAP plot
     
@@ -643,15 +622,15 @@ def shap_plot(estimated_model, X, prefit=True, X_train=None, y_train=None, verbo
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
     
-    if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))): 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
-        return
-        
-    if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))): 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-        return
-    
     if not prefit:
+        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+            return
+
+        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+            return
+
         try:
             estimated_model.fit(X_train, y_train)
         except:
@@ -663,8 +642,8 @@ def shap_plot(estimated_model, X, prefit=True, X_train=None, y_train=None, verbo
     shap.plots.waterfall(shap_values[0])
 
 
-def lime_plot(estimated_model, X, max_feature_amount = 10, selection_num = 25, prefit = True, 
-              X_train = None, y_train = None, work_mode = 'regression', verbose = False):
+def lime_plot(estimated_model, X, max_feature_amount=10, selection_num=25, prefit=True,
+              X_train=None, y_train = None, work_mode='regression', verbose=False):
 
     # === FUNCTION SUMMARY ============================================================================================
 
@@ -685,7 +664,8 @@ def lime_plot(estimated_model, X, max_feature_amount = 10, selection_num = 25, p
     
     #  selection_num  ///  (value)  ///  number of elements for plotting LIME (OPTIONAL)
     
-    #  work_mode  ///  (string)  ///  work mode, 'regression' bu default. (ATTENTION - 'classification' MODE IS NOT SUPPORTED YET)
+    #  work_mode  ///  (string)  ///  work mode, 'regression' by default.
+    #  (ATTENTION - 'classification' MODE IS NOT SUPPORTED YET)
     
     #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
        
@@ -701,14 +681,6 @@ def lime_plot(estimated_model, X, max_feature_amount = 10, selection_num = 25, p
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
     
-    if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))): 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
-        return
-        
-    if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))): 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-        return
-    
     if not(isinstance(max_feature_amount, int) or isinstance(max_feature_amount, np.int_) or isinstance(max_feature_amount, np.intc)) or max_feature_amount <= 0: 
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: max_feature_amount.")
         return
@@ -718,6 +690,14 @@ def lime_plot(estimated_model, X, max_feature_amount = 10, selection_num = 25, p
         return
     
     if not prefit:
+        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+            return
+
+        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+            return
+
         try:
             estimated_model.fit(X_train, y_train)
         except:
@@ -728,19 +708,16 @@ def lime_plot(estimated_model, X, max_feature_amount = 10, selection_num = 25, p
         mode=work_mode, random_state=0)
 
     exp = explainer.explain_instance(X.to_numpy()[selection_num], estimated_model.predict, num_features=max_feature_amount)
-
     exp.as_pyplot_figure()
-
-    from matplotlib import pyplot as plt
     plt.tight_layout()
 
 
-def pdp_3d_plot(estimated_model, X, feature_names, feature_name_1, feature_name_2, 
-                prefit = True, X_train = None, y_train = None, verbose = False):
+def pdp_3d_plot(estimated_model, X, feature_names, feature_name_1, feature_name_2,
+                prefit=True, X_train=None, y_train=None, verbose=False):
 
     # === FUNCTION SUMMARY ============================================================================================
 
-    # Just a simple overlay of the shap library method  waterfall for calculating 3D PDP plot for 2 features' interaction
+    # Just a simple overlay of the "shap"-library method for calculating 3D PDP plot for 2 features' interaction
 
     # ===LIST OF ARGUMENTS: ===========================================================================================
     
@@ -761,7 +738,7 @@ def pdp_3d_plot(estimated_model, X, feature_names, feature_name_1, feature_name_
     
     #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
        
-    # === OUTPUT ==============================================================================================================
+    # === OUTPUT ======================================================================================================
     
     # Output  /// outputs 3D "heat" PDP plot
      
@@ -772,14 +749,6 @@ def pdp_3d_plot(estimated_model, X, feature_names, feature_name_1, feature_name_
     if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
-    
-    if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))): 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
-        return
-        
-    if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))): 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
-        return
              
     if not isinstance(feature_name_1, (str)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_name_1.")
@@ -788,6 +757,20 @@ def pdp_3d_plot(estimated_model, X, feature_names, feature_name_1, feature_name_
     if not isinstance(feature_name_2, (str)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_name_2.")
         return
+
+    if not prefit:
+        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+            return
+
+        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+            return
+
+        try:
+            estimated_model.fit(X_train, y_train)
+        except:
+            logging.warning("Estimated model must have fit method.")
 
     pdp_goal = pdp.pdp_interact(model=estimated_model, dataset=X, model_features=feature_names, 
                                   features=[feature_name_1, feature_name_2])
