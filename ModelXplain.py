@@ -70,7 +70,7 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_model.")
         return
     
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X.")
         return
     
@@ -212,7 +212,7 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
         return
     
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X.")
         return
     
@@ -266,7 +266,8 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
         return
     
     # -- main part --
-    
+
+    n_objects = df.shape[0]
     n_features = df.shape[1]
     result = np.zeros(n_features)
 
@@ -285,7 +286,9 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
         
         for j in range(shuffle_num):
             df_shuffled = df.copy()
-            df_shuffled[current_feature] = df[current_feature].sample(frac=1).reset_index(drop=True)
+
+            idx = np.random.choice(np.arange(0, n_objects), size=n_objects, replace=False)
+            df_shuffled[current_feature] = df[current_feature].values[idx]
             
             prediction = estimated_model.predict(df_shuffled)
             feature_loss = metrics_dict[metrics](y, prediction)
@@ -306,7 +309,7 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
     return result
 
 
-def ice_plot_2D(estimated_model, X, feature_names, target_feature, prefit=True, grid_points_val=30,
+def pdp_plot_2D(estimated_model, X, feature_names, target_feature, prefit=True, grid_points_val=30,
                 X_train=None, y_train=None, verbose=False):
 
     # === FUNCTION SUMMARY ============================================================================================
@@ -712,7 +715,7 @@ def lime_plot(estimated_model, X, max_feature_amount=10, selection_num=25, prefi
     plt.tight_layout()
 
 
-def pdp_3d_plot(estimated_model, X, feature_names, feature_name_1, feature_name_2,
+def pdp_plot_3D(estimated_model, X, feature_names, feature_name_1, feature_name_2,
                 prefit=True, X_train=None, y_train=None, verbose=False):
 
     # === FUNCTION SUMMARY ============================================================================================
