@@ -70,11 +70,11 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_model.")
         return
     
-    if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))):
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X.")
         return
     
-    if not (isinstance(y, (pd.DataFrame)) or isinstance(y, (np.ndarray))):
+    if not (isinstance(y, pd.DataFrame) or isinstance(y, np.ndarray) or isinstance(y, pd.Series)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
         return
             
@@ -212,20 +212,20 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
         return
     
-    if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))):
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X.")
         return
     
-    if not (isinstance(y, (pd.DataFrame)) or isinstance(y, (np.ndarray))):
+    if not (isinstance(y, pd.DataFrame) or isinstance(y, np.ndarray) or isinstance(y, pd.Series)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
         return
     
     if not prefit:
-        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
             return
 
-        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
             return
 
@@ -340,24 +340,24 @@ def ice_plot_2D(estimated_model, X, feature_names, target_feature, prefit=True, 
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
         return
     
-    if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
     
-    if not isinstance(feature_names, (list)):
+    if not isinstance(feature_names, list):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_names.")
         return
     
-    if not isinstance(target_feature, (str)):
+    if not isinstance(target_feature, str):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: target_feature.")
         return
     
     if not prefit:
-        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
             return
 
-        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
             return
 
@@ -408,15 +408,15 @@ def pdp_values(estimated_model, X, feature_names, target_feature, target_val_upp
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
         return
     
-    if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
             return
     
-    if not isinstance(feature_names, (list)): 
+    if not isinstance(feature_names, list):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_names.")
             return
     
-    if not isinstance(target_feature, (str)): 
+    if not isinstance(target_feature, str):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: target_feature.")
             return
         
@@ -429,11 +429,11 @@ def pdp_values(estimated_model, X, feature_names, target_feature, target_val_upp
             return
     
     if not prefit:
-        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
             return
 
-        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
             return
 
@@ -550,7 +550,7 @@ def ice_values(estimated_model, X, feature_names, target_feature, grid_val_start
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
         return
     
-    if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
 
@@ -569,11 +569,11 @@ def ice_values(estimated_model, X, feature_names, target_feature, grid_val_start
         g_range = None
     
     if not prefit:
-        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray)) or isinstance(X_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
             return
 
-        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray)) or isinstance(y_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
             return
 
@@ -618,16 +618,16 @@ def shap_plot(estimated_model, X, prefit=True, X_train=None, y_train=None, verbo
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
         return
     
-    if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
     
     if not prefit:
-        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
             return
 
-        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray)) or isinstance(y_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
             return
 
@@ -677,7 +677,7 @@ def lime_plot(estimated_model, X, max_feature_amount=10, selection_num=25, prefi
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
         return
     
-    if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)) or isinstance(X, pd.Series):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
     
@@ -690,11 +690,11 @@ def lime_plot(estimated_model, X, max_feature_amount=10, selection_num=25, prefi
         return
     
     if not prefit:
-        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
             return
 
-        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
             return
 
@@ -746,24 +746,24 @@ def pdp_3d_plot(estimated_model, X, feature_names, feature_name_1, feature_name_
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
         return
     
-    if not (isinstance(X, (pd.DataFrame)) or isinstance(X, (np.ndarray))): 
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
         return
              
-    if not isinstance(feature_name_1, (str)):
+    if not isinstance(feature_name_1, str):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_name_1.")
         return
     
-    if not isinstance(feature_name_2, (str)):
+    if not isinstance(feature_name_2, str):
         logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_name_2.")
         return
 
     if not prefit:
-        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray))):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
             return
 
-        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray))):
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
             logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
             return
 
