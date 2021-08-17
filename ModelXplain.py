@@ -38,7 +38,7 @@ def get_loco_feature_importances(estimated_model, X, y, normalize_result=True, n
     # ===LIST OF ARGUMENTS: ===========================================================================================
     
     #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit() and .predict() methods)
-    #  /// input model which we want to calculate PFI for
+    #  /// input model which we want to calculate LOCO for
     
     #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values
     
@@ -75,8 +75,8 @@ def get_loco_feature_importances(estimated_model, X, y, normalize_result=True, n
         logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
     
-    if not (isinstance(y, pd.DataFrame) or isinstance(y, np.ndarray) or isinstance(y, pd.Series)):
-        logging.warning("Incorrect or missing argument: y. Expected: pd.DataFrame, pd.Series or np.ndarray, got:" + \
+    if not (isinstance(y, pd.DataFrame) or isinstance(y, np.ndarray)):
+        logging.warning("Incorrect or missing argument: y. Expected: pd.DataFrame or np.ndarray, got:" + \
                          str(type(y)))
 
         return
@@ -227,18 +227,18 @@ def get_pfi_feature_importances(estimated_model, X, y, normalize_result=True, no
                         + str(type(X)))
         return
 
-    if not (isinstance(y, pd.DataFrame) or isinstance(y, np.ndarray) or isinstance(y, pd.Series)):
+    if not (isinstance(y, pd.DataFrame) or isinstance(y, np.ndarray) ):
         logging.warning("Incorrect or missing argument: y. Expected: pd.DataFrame or np.ndarray, got:" + \
                         str(type(y)))
         return
     
     if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
             logging.warning("Incorrect or missing argument: X_train. Expected: pd.DataFrame or np.ndarray, got:" \
                             + str(type(X_train)))
             return
 
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray)):
             logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, " \
                             "got:" + str(type(y_train)))
             return
@@ -366,13 +366,13 @@ def pdp_plot_2D(estimated_model, X, feature_names, target_feature, prefit=True, 
                         "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
     
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
         logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
     
     if not isinstance(feature_names, list):
-        logging.warning("Incorrеct or missing argument: y. Expected: pd.DataFrame, pd.Series or np.ndarray, got:" + \
-                        str(type(y)))
+        logging.warning("Incorrеct or missing argument: y. Expected: pd.DataFrame or np.ndarray, got:" + \
+                        str(type(feature_names)))
         return
     
     if not isinstance(target_feature, str):
@@ -380,12 +380,12 @@ def pdp_plot_2D(estimated_model, X, feature_names, target_feature, prefit=True, 
         return
     
     if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
             logging.warning(
                 "Incorrect or missing argument: X_train. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X_train)))
             return
 
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray)):
             logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + str(type(y_train)))
             return
 
@@ -439,7 +439,7 @@ def pdp_values(estimated_model, X, feature_names, target_feature, target_val_upp
                         "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
     
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
             logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
             return
     
@@ -460,18 +460,18 @@ def pdp_values(estimated_model, X, feature_names, target_feature, target_val_upp
             return
     
     if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
             logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
             return
 
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray)):
             logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + str(type(y_train)))
             return
 
         try:
             estimated_model.fit(X_train, y_train)
         except:
-            logging.warning("Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model "
+            logging.warning("Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model " \
                 "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names, 
@@ -583,7 +583,7 @@ def ice_values(estimated_model, X, feature_names, target_feature, grid_val_start
                         "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
 
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
         logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
 
@@ -602,11 +602,11 @@ def ice_values(estimated_model, X, feature_names, target_feature, grid_val_start
         g_range = None
     
     if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
             logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
             return
 
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray)):
             logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + \
                             str(type(y_train)))
             return
@@ -653,16 +653,16 @@ def shap_plot(estimated_model, X, prefit=True, X_train=None, y_train=None, verbo
                         "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
     
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
         logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
     
     if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
             logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
             return
 
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray)):
             logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" \
                             + str(type(y_train)))
             return
@@ -716,7 +716,7 @@ def lime_plot(estimated_model, X, max_feature_amount=10, selection_num=25, prefi
                         "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
     
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)) or isinstance(X, pd.Series):
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
         logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
     
@@ -729,12 +729,12 @@ def lime_plot(estimated_model, X, max_feature_amount=10, selection_num=25, prefi
         return
     
     if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
             logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
             return
 
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
-            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + str(
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) ):
+            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + str( \
                 type(y_train)))
             return
 
@@ -789,7 +789,7 @@ def pdp_plot_3D(estimated_model, X, feature_names, feature_name_1, feature_name_
                         "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
 
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)) or isinstance(X, pd.Series):
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
         logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
              
@@ -802,11 +802,11 @@ def pdp_plot_3D(estimated_model, X, feature_names, feature_name_1, feature_name_
         return
 
     if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
             logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
             return
 
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray)):
             logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" \
                             + str(type(y_train)))
             return
