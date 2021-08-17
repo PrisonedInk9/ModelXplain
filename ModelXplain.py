@@ -228,7 +228,7 @@ def get_pfi_feature_importances(estimated_model, X, y, normalize_result=True, no
         return
 
     if not (isinstance(y, pd.DataFrame) or isinstance(y, np.ndarray) or isinstance(y, pd.Series)):
-        logging.warning("Incorrect or missing argument: y. Expected: pd.DataFrame, pd.Series or np.ndarray, got:" + \
+        logging.warning("Incorrect or missing argument: y. Expected: pd.DataFrame or np.ndarray, got:" + \
                         str(type(y)))
         return
     
