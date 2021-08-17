@@ -18,7 +18,7 @@ from matplotlib import pyplot as plt
 from pdpbox import pdp, get_dataset, info_plots
 
 
-def get_loco_feature_importances(estimated_model, X, y, feature_names=None, normalize_result=True, normalize_num=1.0, 
+def get_loco_feature_importances(estimated_model, X, y, normalize_result=True, normalize_num=1.0,
                                  error_type='divide', metrics='mean_squared_error', verbose=False, data_split=False):
    
     # === FUNCTION SUMMARY ============================================================================================
@@ -37,7 +37,7 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
 
     # ===LIST OF ARGUMENTS: ===========================================================================================
     
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)
+    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit() and .predict() methods)
     #  /// input model which we want to calculate PFI for
     
     #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values
@@ -67,31 +67,38 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
     # Output  /// (numpy.array) ///  function returns LOCO feature importances
     
     if estimated_model is None:
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_model.")
+        logging.warning("Incorerct or missing argument: estimated_model. Expected: Sklearn or any other suitable " \
+                        "model with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
     
     if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X.")
+        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
     
     if not (isinstance(y, pd.DataFrame) or isinstance(y, np.ndarray) or isinstance(y, pd.Series)):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
+        logging.warning("Incorrect or missing argument: y. Expected: pd.DataFrame, pd.Series or np.ndarray, got:" + \
+                         str(type(y)))
+
         return
             
     if error_type != 'divide' and error_type != 'subtract':
-        logging.warning("Incorrect error_type: must be divide or subtract.")
+        logging.warning("Incorrect argument: error_type. Expected:'divide' or 'subtract', got:" + (error_type))
         return
     
     if normalize_num <= 0:
-        logging.warning("Incorrect normalization value (zero). Best normalization values for result representation are 1 and 100.")
+        logging.warning("Incorrect normalization value (negative, zero, or incorrect type). Best normalization "
+                        "values for result representation are 1 and 100. Expected: positive integer, got:" + \
+                        str(type(normalize_num)))
         return
     
     metrics_dict = {'mean_squared_error': mean_squared_error}
     if metrics not in metrics_dict.keys():
-        logging.warning("Incorrect metrics.")
+        logging.warning("Incorrect or argument: metrics. Expected: str, got:" + str(type(metrics))) + \
+                        "(Only mean_squared_error is currently available)"
         return
 
     # checking inputs
+    feature_names = None
     df = None
     if isinstance(X, (np.ndarray)):
         if feature_names is None:
@@ -102,7 +109,7 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
         if feature_names is None:
             feature_names = np.array(X.columns)
     else:
-        logging.warning("INCORRECT ARGUMENT TYPE: X.")
+        logging.warning("Incorrect argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
     
     n_features = df.shape[1]
@@ -111,13 +118,15 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
     try:
         estimated_model.fit(df, y)
     except:
-        logging.warning("Estimated model must have fit method.")
+        logging.warning("Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model with .fit()" \
+                        "and .predict() methods, got:" + str(type(estimated_model)))
         return
 
     try:   
         prediction = estimated_model.predict(df) # training model to calculate initial error
     except:
-        logging.warning("Estimated model must have predict method.")
+        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model " \
+                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
 
     start_loss = metrics_dict[metrics](y, prediction)
@@ -170,7 +179,7 @@ def get_loco_feature_importances(estimated_model, X, y, feature_names=None, norm
     return result
 
 
-def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, normalize_result=True, normalize_num=1.0, 
+def get_pfi_feature_importances(estimated_model, X, y, normalize_result=True, normalize_num=1.0,
                                 error_type='divide', metrics='mean_squared_error', shuffle_num=3, verbose=False,
                                 prefit = True, X_train = None, y_train = None):    
     
@@ -207,51 +216,63 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
     # === OUTPUT ======================================================================================================
     
     # Output  /// (numpy.array) ///  function returns PFI feature importances  
-    
+
     if estimated_model is None:
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        logging.warning("Incorerct or missing argument: estimated_model. Expected: Sklearn or any other suitable model" \
+                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
-    
+
     if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X.")
+        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" \
+                        + str(type(X)))
         return
-    
+
     if not (isinstance(y, pd.DataFrame) or isinstance(y, np.ndarray) or isinstance(y, pd.Series)):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y.")
+        logging.warning("Incorrect or missing argument: y. Expected: pd.DataFrame, pd.Series or np.ndarray, got:" + \
+                        str(type(y)))
         return
     
     if not prefit:
         if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+            logging.warning("Incorrect or missing argument: X_train. Expected: pd.DataFrame or np.ndarray, got:" \
+                            + str(type(X_train)))
             return
 
         if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, " \
+                            "got:" + str(type(y_train)))
             return
 
         try:
             estimated_model.fit(X_train, y_train)
         except:
-            logging.warning("Estimated model must have fit method.")
+            logging.warning(
+                "Incorerct or missing argument: estimated_model. Expected: Sklearn or any other suitable model " \
+                "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
             return
 
     if error_type != 'divide' and error_type != 'subtract':
-        logging.warning("Incorrect error_type: must be divide or subtract.")
+        logging.warning("Incorrect or argument: metrics. Expected: str, got:" + str(type(metrics))) + \
+                        "(Only mean_squared_error is currently available)"
         return
     
     if shuffle_num <= 0:
-        logging.warning("Incorrect shuffle num. Shuffle amount should be at least 1.")
+        logging.warning("Incorrect or missimg argument: shuffle_num. Expected: positive integer not less 1, got: " + str(shuffle_num))
         return
     
     if normalize_num <= 0:
-        logging.warning("Incorrect normalization value (zero). Best normalization values for result representation are 1 and 100.")
+        logging.warning("Incorrect normalization value (negative, zero, or incorrect type). Best normalization " \
+                        "values for result representation are 1 and 100. Expected: positive integer, got:" + \
+                        str(normalize_num))
         return
     
     metrics_dict = {'mean_squared_error': mean_squared_error}
     if metrics not in metrics_dict.keys():
-        logging.warning("Incorrect metrics.")
+        logging.warning("Incorrect or argument: metrics. Expected: str, got:" + str(type(metrics))) + \
+        "(Only mean_squared_error is currently available)"
         return
-    
+
+    feature_names = None
     df = None
     if isinstance(X, (np.ndarray)):
         if feature_names is None:
@@ -262,7 +283,7 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
         if feature_names is None:
             feature_names = np.array(X.columns)
     else:
-        logging.warning("Incorrect type of X.")
+        logging.warning("Incorrect argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
     
     # -- main part --
@@ -274,7 +295,8 @@ def get_pfi_feature_importances(estimated_model, X, y, feature_names=None, norma
     try:
         prediction = estimated_model.predict(df)
     except:
-        logging.warning("Estimated model must have predict method.")
+        logging.warning("Incorerct argument: estimated_model. Expected: Sklearn or any other suitable model " \
+                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
 
     start_loss = metrics_dict[metrics](y, prediction)
@@ -340,34 +362,39 @@ def pdp_plot_2D(estimated_model, X, feature_names, target_feature, prefit=True, 
     # Output  ///  plots a PDP plot
     
     if estimated_model is None:
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model " \
+                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
     
     if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
+        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
     
     if not isinstance(feature_names, list):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_names.")
+        logging.warning("Incorrеct or missing argument: y. Expected: pd.DataFrame, pd.Series or np.ndarray, got:" + \
+                        str(type(y)))
         return
     
     if not isinstance(target_feature, str):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: target_feature.")
+        logging.warning("Incorrect or missing argument: target_feature. Expected: str, got:" + str(type(target_feature)))
         return
     
     if not prefit:
         if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+            logging.warning(
+                "Incorrect or missing argument: X_train. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X_train)))
             return
 
         if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + str(type(y_train)))
             return
 
         try:
             estimated_model.fit(X_train, y_train)
         except:
-            logging.warning("Estimated model must have fit method.")
+            logging.warning(
+                "Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model "
+                "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names,
                             feature=target_feature, num_grid_points=grid_points_val, grid_type='equal')
@@ -408,42 +435,44 @@ def pdp_values(estimated_model, X, feature_names, target_feature, target_val_upp
     # within the specified interval, the average and median within these intervals  
     
     if estimated_model is None:
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model "
+                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
     
     if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
+            logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
             return
     
     if not isinstance(feature_names, list):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_names.")
+            logging.warning("Incorrect or missing argument: feature_names. Expected: str:" + str(type(feature_names)))
             return
     
     if not isinstance(target_feature, str):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: target_feature.")
+            logging.warning("Incorrect or missing argument: target_feature. Expected: str:" + str(type(target_feature)))
             return
         
     if not(isinstance(target_val_upper, int) or isinstance(target_val_upper, np.int_) or isinstance(target_val_upper, np.intc)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : target_val_upper.")
+            logging.warning("Incorrect or missing argument: target_val_upper. Expected: value, got:" + str(type(target_val_upper)))
             return
     
     if not(isinstance(target_val_lower, int) or isinstance(target_val_lower, np.int_) or isinstance(target_val_lower, np.intc)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: target_val_lower.")
+            logging.warning("Incorrect or missing argument: target_val_lower. Expected: value, got:" + str(type(target_val_lower)))
             return
     
     if not prefit:
         if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE : X_train.")
+            logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
             return
 
         if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + str(type(y_train)))
             return
 
         try:
             estimated_model.fit(X_train, y_train)
         except:
-            logging.warning("Estimated model must have fit method.")
+            logging.warning("Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model "
+                "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names, 
                             feature=target_feature, num_grid_points=grid_points_val, grid_type='equal')
@@ -550,20 +579,21 @@ def ice_values(estimated_model, X, feature_names, target_feature, grid_val_start
     # pdp_goals.ice_lines  ///  (pandas.DataFrame)  /// outputs ICE values
      
     if estimated_model is None:
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model "
+                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
-    
+
     if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
+        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
 
     if grid_val_start is not None and grid_val_end is not None:
         if not(isinstance(grid_val_start, int) or isinstance(grid_val_start, np.int_) or isinstance(grid_val_start, np.intc)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: grid_val_start.")
+            logging.warning("Incorrect or missing argument: grid_val_start. Expected: value, got:" + str(type(grid_val_start)))
             return
 
         if not(isinstance(grid_val_end, int) or isinstance(grid_val_end, np.int_) or isinstance(grid_val_end, np.intc)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: grid_val_end.")
+            logging.warning("Incorrect or missing argument: grid_val_end. Expected: value, got:" + str(type(grid_val_end)))
             return
 
         g_range = (grid_val_start, grid_val_end)
@@ -572,12 +602,13 @@ def ice_values(estimated_model, X, feature_names, target_feature, grid_val_start
         g_range = None
     
     if not prefit:
-        if not (isinstance(X_train, (pd.DataFrame)) or isinstance(X_train, (np.ndarray)) or isinstance(X_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
+            logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
             return
 
-        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray)) or isinstance(y_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
+            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + \
+                            str(type(y_train)))
             return
 
         try:
@@ -618,26 +649,30 @@ def shap_plot(estimated_model, X, prefit=True, X_train=None, y_train=None, verbo
     # Output  /// outputs SHAP plot
     
     if estimated_model is None:
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model " \
+                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
     
     if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
+        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
     
     if not prefit:
         if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+            logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
             return
 
-        if not (isinstance(y_train, (pd.DataFrame)) or isinstance(y_train, (np.ndarray)) or isinstance(y_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
+            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" \
+                            + str(type(y_train)))
             return
 
         try:
             estimated_model.fit(X_train, y_train)
         except:
-            logging.warning("Estimated model must have fit method.")
+            logging.warning(
+                "Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model "\
+                "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
 
     explainer = shap.Explainer(estimated_model)
     shap_values = explainer(X)
@@ -677,34 +712,38 @@ def lime_plot(estimated_model, X, max_feature_amount=10, selection_num=25, prefi
     # Output  /// outputs SHAP plot
     
     if estimated_model is None:
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model "
+                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
     
     if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)) or isinstance(X, pd.Series):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
+        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
     
     if not(isinstance(max_feature_amount, int) or isinstance(max_feature_amount, np.int_) or isinstance(max_feature_amount, np.intc)) or max_feature_amount <= 0: 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: max_feature_amount.")
+        logging.warning("Incorrect argument: max_feature_amount. Expected: value, got:" + str(type(max_feature_amount)))
         return
         
-    if not(isinstance(selection_num, int) or isinstance(selection_num, np.int_) or isinstance(selection_num, np.intc)) or selection_num <= 0: 
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: selection_num.")
+    if not(isinstance(selection_num, int) or isinstance(selection_num, np.int_) or isinstance(selection_num, np.intc)) or selection_num <= 0:
+        logging.warning("Incorrect argument: selection_num. Expected: value, got:" + str(type(selection_num)))
         return
     
     if not prefit:
         if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+            logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
             return
 
         if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + str(
+                type(y_train)))
             return
 
         try:
             estimated_model.fit(X_train, y_train)
         except:
-            logging.warning("Estimated model must have fit method.")
+            logging.warning(
+                "Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model "
+                "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
 
     explainer = LimeTabularExplainer(training_data=X.to_numpy(),
         feature_names=list(X.columns),
@@ -744,36 +783,40 @@ def pdp_plot_3D(estimated_model, X, feature_names, feature_name_1, feature_name_
     # === OUTPUT ======================================================================================================
     
     # Output  /// outputs 3D "heat" PDP plot
-     
+
     if estimated_model is None:
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: estimated_mode.")
+        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model "
+                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
         return
-    
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray) or isinstance(X, pd.Series)):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X.")
+
+    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)) or isinstance(X, pd.Series):
+        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
              
     if not isinstance(feature_name_1, str):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_name_1.")
+        logging.warning("Incorrect or missing argument: feature_name_1. Expected: str:" + str(type(feature_name_1)))
         return
     
     if not isinstance(feature_name_2, str):
-        logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: feature_name_2.")
+        logging.warning("Incorrect or missing argument: feature_name_2. Expected: str:" + str(type(feature_name_2)))
         return
 
     if not prefit:
         if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray) or isinstance(X_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: X_train.")
+            logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
             return
 
         if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) or isinstance(y_train, pd.Series)):
-            logging.warning("MISSING ARGUMENT OR INCORRECT ARGUMENT TYPE: y_train.")
+            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" \
+                            + str(type(y_train)))
             return
 
         try:
             estimated_model.fit(X_train, y_train)
         except:
-            logging.warning("Estimated model must have fit method.")
+            logging.warning(
+                "Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model "
+                "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
 
     pdp_goal = pdp.pdp_interact(model=estimated_model, dataset=X, model_features=feature_names, 
                                   features=[feature_name_1, feature_name_2])
@@ -789,9 +832,9 @@ def pdp_plot_3D(estimated_model, X, feature_names, feature_name_1, feature_name_
 
 '''
 
-_____                       _         _                         __     __      __      _ 
+ _____                       _         _                         __     __      __      _ 
 (_   _)                     ( )       ( )_            _  _     /'__`\ /' _`\  /'__`\  /' )
-  | |   __   _ __   _ _    _| |   _ _ | ,_)   _ _    ( )( )   (_)  ) )| ( ) |(_)  ) )(_, |
+  | |   __   _ __   _ _    _| |   _ _ | ,_)   _ _    | || |   (_)  ) )| ( ) |(_)  ) )(_, |
   | | /'__`\( '__)/'_` ) /'_` | /'_` )| |   /'_` )   | || |      /' / | | | |   /' /   | |
   | |(  ___/| |  ( (_| |( (_| |( (_| || |_ ( (_| |   | || |    /' /( )| (_) | /' /( )  | |
   (_)`\____)(_)  `\__,_)`\__,_)`\__,_)`\__)`\__,_)   | || |   (_____/'`\___/'(_____/'  (_)
