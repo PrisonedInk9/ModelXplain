@@ -369,7 +369,11 @@ def pdp_plot_2D(estimated_model, X, feature_names, target_feature, prefit=True, 
     if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
         logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
         return
-    
+
+    if not (isinstance(grid_points_val, int) or isinstance(grid_points_val, np.int_) or isinstance(grid_points_val, np.intc) or grid_points_val <= 0):
+        logging.warning("Incorrect argument: grid_points_val. Expected: positive integer , got:" + str(grid_points_val))
+        return
+
     if not isinstance(feature_names, list):
         logging.warning("Incorrеct or missing argument: y. Expected: pd.DataFrame or np.ndarray, got:" + \
                         str(type(feature_names)))
@@ -457,6 +461,10 @@ def pdp_values(estimated_model, X, feature_names, target_feature, target_val_upp
     
     if not(isinstance(target_val_lower, int) or isinstance(target_val_lower, np.int_) or isinstance(target_val_lower, np.intc)):
             logging.warning("Incorrect or missing argument: target_val_lower. Expected: value, got:" + str(type(target_val_lower)))
+            return
+
+    if not(isinstance(grid_points_val, int) or isinstance(grid_points_val, np.int_) or isinstance(grid_points_val, np.intc) or grid_points_val <=0):
+            logging.warning("Incorrect argument: grid_points_val. Expected: positive integer , got:" + str(grid_points_val))
             return
     
     if not prefit:
