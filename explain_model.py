@@ -38,7 +38,7 @@ def _check_importances_args(estimated_model, X, y, **kwargs):
 
     normalize_result = kwargs.get("normalize_result", True)
     normalize_num = kwargs.get("normalize_num", 1.0)
-    error_type = kwargs.get("kwargs", "divide")
+    error_type = kwargs.get("error_type", "divide")
     metric = kwargs.get("metric", mean_squared_error)
 
     if normalize_num <= 0:
