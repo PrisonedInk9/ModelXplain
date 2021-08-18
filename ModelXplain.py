@@ -840,7 +840,7 @@ def pdp_plot_3D(estimated_model, X, feature_names, feature_name_1, feature_name_
 
 ## Target metric count for objects belongs to pair of features and they intervals. IMPORTANT: MIGHT BE NOT RELIABLE
 
-def targetMetric(_df, _fun='mean', colLim={0: [0,0], 1:[0,0]}):
+def targetMetric(df, target, fun='mean', colLim={0: [0, 0], 1:[0, 0]}):
     '''
     InPuts:
       _df - dataSet in pandas DataFrame
@@ -855,18 +855,18 @@ def targetMetric(_df, _fun='mean', colLim={0: [0,0], 1:[0,0]}):
     _cond = None
     for _key in colLim:
         if not (_cond is None):
-            _cond = (_cond)  & (_df[_key] >= colLim[_key][0])  &  (_df[_key]  <= colLim[_key][1])
+            _cond = (_cond) & (df[_key] >= colLim[_key][0]) & (df[_key] <= colLim[_key][1])
         else:
-            _cond = (_df[_key]  >= colLim[_key][0])  &  (_df[_key]  <= colLim[_key][1])
-    _df_filter = _df[_cond]
+            _cond = (df[_key] >= colLim[_key][0]) & (df[_key] <= colLim[_key][1])
+    _df_filter = df[_cond]
     # choose objects coresponds in interval
-    inIntervalSet = _df_filter['FLAG']
+    inIntervalSet = _df_filter[target]
 
-    if _fun == 'mean':
+    if fun == 'mean':
         res = np.nanmean(inIntervalSet)
-    elif _fun == 'median':
+    elif fun == 'median':
         res = np.nanmedian(inIntervalSet)
-    elif _fun == 'classification':
+    elif fun == 'classification':
         if np.size(inIntervalSet, 0) != 0 :
             res = np.sum(inIntervalSet)/np.size(inIntervalSet, 0)
         else:
