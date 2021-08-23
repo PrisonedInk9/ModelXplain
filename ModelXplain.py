@@ -18,316 +18,259 @@ from matplotlib import pyplot as plt
 from pdpbox import pdp, get_dataset, info_plots
 
 
-def get_loco_feature_importances(estimated_model, X, y, normalize_result=True, normalize_num=1.0,
-                                 error_type='divide', metrics='mean_squared_error', verbose=False, data_split=False):
-   
-    # === FUNCTION SUMMARY ============================================================================================
+def _check_estimator(estimator, *attributes):
 
-    # Input: Trained model estimated_model, feature matrix X, target value y, error measure 
-
-    #  1) Input trained model, table of features and column of target values
-    #  2) Make a prediction and evaluate start loss array with any metrics acceptable
-    #  3) Reshape your model with datasets with every feature alternately excluded and write error for every
-    #  excluded feature into separate array
-    #  4) For every feature divide the error vector for the excluded feature by the error vector of the full dataset or 
-    #    subtract the error vector of the full dataset from the error vector for the excluded feature 
-    #  5) Normalize the result vector if needed
-    
-    # TL;DR - this function calculates LOCO feature importances
-
-    # ===LIST OF ARGUMENTS: ===========================================================================================
-    
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit() and .predict() methods)
-    #  /// input model which we want to calculate LOCO for
-    
-    #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values
-    
-    #  y  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values
-    
-    #  error_type  ///  (string - 'divide' or 'subtract')  ///  option for choosing method for calculating error
-    
-    #  metrics  ///  (string - any metrics from  metrics_dict.keys())  ///  option for choosing error calculation method
-    
-    #  normalize_num  /// (number)
-    #  ///  value for normilizing features upon calculating error per every feature's eclusion (OPTIONAL)
-    
-    #  data_split  ///  (bool)   ///  option for splitting data when calculatig 
-    
-    #  prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not  (OPTIONAL)
-    
-    #  X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model (OPTIONAL)
-    
-    #  y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model (OPTIONAL)
+    """
+      Auxilary function to check if model is suitable for working with
       
-    #  verbose  ///  (bool) (OPTIONAL- REMOVAL REQUIRED)  ///  option for outputting detailed 
-    
-    
-    # === OUTPUT ======================================================================================================
-    
-    # Output  /// (numpy.array) ///  function returns LOCO feature importances
-    
-    if estimated_model is None:
-        logging.warning("Incorerct or missing argument: estimated_model. Expected: Sklearn or any other suitable " \
-                        "model with .fit() and .predict() methods, got:" + str(type(estimated_model)))
-        return
-    
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
-        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
-        return
-    
-    if not (isinstance(y, pd.DataFrame) or isinstance(y, np.ndarray)):
-        logging.warning("Incorrect or missing argument: y. Expected: pd.DataFrame or np.ndarray, got:" + \
-                         str(type(y)))
+      Parameters
+      ----------
+      estimator:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit` and `predict` methods
+          Input model which we want to check
+      attributes:   Class attributes
+          Attributes of the model we want to check
+      Keyword Arguments
+      -----------------
+      Returns
+      -------
+      Nothing
+      """
 
-        return
-            
-    if error_type != 'divide' and error_type != 'subtract':
-        logging.warning("Incorrect argument: error_type. Expected:'divide' or 'subtract', got:" + (error_type))
-        return
-    
-    if normalize_num <= 0:
-        logging.warning("Incorrect normalization value (negative, zero, or incorrect type). Best normalization "
-                        "values for result representation are 1 and 100. Expected: positive integer, got:" + \
-                        str(type(normalize_num)))
-        return
-    
-    metrics_dict = {'mean_squared_error': mean_squared_error}
-    if metrics not in metrics_dict.keys():
-        logging.warning("Incorrect or argument: metrics. Expected: str, got:" + str(type(metrics))) + \
-                        "(Only mean_squared_error is currently available)"
-        return
+    for attr in attributes:
+        if not hasattr(estimator, attr):
+            raise ValueError(f"Provided estimator does not have '{attr}' method")
 
-    # checking inputs
-    feature_names = None
-    df = None
-    if isinstance(X, (np.ndarray)):
-        if feature_names is None:
-            feature_names = np.array(range(X.shape[1]))
-        df = pd.DataFrame(data=X.to_numpy(), columns=feature_names)
-    elif isinstance(X, (pd.core.frame.DataFrame)):
-        df = X.copy()
-        if feature_names is None:
-            feature_names = np.array(X.columns)
-    else:
-        logging.warning("Incorrect argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
-        return
-    
-    n_features = df.shape[1]
-    result = np.zeros(n_features)
-    
     try:
-        estimated_model.fit(df, y)
+        estimated_model = estimator.copy()
+    except AttributeError:
+        from copy import deepcopy
+        estimated_model = deepcopy(estimator)
     except:
-        logging.warning("Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model with .fit()" \
-                        "and .predict() methods, got:" + str(type(estimated_model)))
-        return
+        raise ValueError("Cannot make copy of an estimator")
+    return estimated_model
 
-    try:   
-        prediction = estimated_model.predict(df) # training model to calculate initial error
-    except:
-        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model " \
-                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
-        return
 
-    start_loss = metrics_dict[metrics](y, prediction)
 
-    for i in range(n_features):
-        current_feature = feature_names[i]
-        
+
+def _check_importances_args(estimated_model, X, y, **kwargs):
+
+    """
+      Auxilary function for checking arguments for get_loco_feature_importances and get_pfi_feature_importances
+
+      Parameters
+      ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with
+                            `fit` and `predict` methods
+           Input model which we want to calculate LOCO for
+        X:                  Array like data
+             Features dataset
+        y:                  Array like data
+            Target dataset
+        kwargs:
+            optional arguments
+        Keyword Arguments
+        -----------------
+        None
+          
+        Returns
+         -------
+        None
+    """
+
+
+    if isinstance(X, pd.DataFrame):
+        feature_names = X.columns
+    else:
+        feature_names = list(range(X.shape[1]))
+        try:
+            X = pd.DataFrame(data=X, columns=feature_names)
+        except:
+            raise ValueError(f"Cannot create DataFrame from `X`")
+
+    if isinstance(y, (pd.DataFrame, pd.Series)):
+        y = y.to_numpy()
+    else:
+        y = np.asarray(y)
+
+    estimator = _check_estimator(estimated_model, "fit", "predict")
+
+    normalize_result = kwargs.get("normalize_result", True)
+    normalize_num = kwargs.get("normalize_num", 1.0)
+    error_type = kwargs.get("error_type", "divide")
+    metric = kwargs.get("metric", mean_squared_error)
+
+    if normalize_num <= 0:
+        raise ValueError(f"Incorrect normalization value, expected to be > 0, got {normalize_num}")
+
+    if error_type not in ['divide', 'subtract']:
+        raise ValueError(f"Incorrect error_type value, expected to be in ['divide', 'subtract'], got {error_type}")
+
+    if not callable(metric):
+        raise ValueError("Provided metric function is not callable")
+
+    return estimator, X, y, feature_names, normalize_result, normalize_num, error_type, metric
+
+
+def get_loco_feature_importances(estimated_model, X, y, data_split=False, fit_args=None, **kwargs):
+    """
+    This function calculates LOCO feature importances.
+        1) Input trained model, table of features and column of target values
+        2) Make a prediction and evaluate start loss array with any metrics acceptable
+        3) Reshape your model with datasets with every feature alternately excluded and write error for every
+            excluded feature into separate array
+        4) For every feature divide the error vector for the excluded feature by the error vector of the full dataset or
+            subtract the error vector of the full dataset from the error vector for the excluded feature
+        5) Normalize the result vector if needed
+    Parameters
+    ----------
+    estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit` and `predict` methods
+        Input model which we want to calculate LOCO for
+    X:                  Array like data
+        A table of features values
+    y:                  Array like data
+        A column of target values
+    data_split:         bool
+        option for splitting data when calculatig
+        Default is False
+    fit_args:           dict
+        Optional argumets for fitting model
+        Default is None
+    Keyword Arguments
+    -----------------
+    normalize_result:   bool
+        should we normalize results?
+        Default is True
+    normalize_num:      int or float
+        value for normalizing features upon
+        Default is 1.0
+    error_type:         str
+        Option for choosing method for calculating error. One of the 'divide', 'subtract'
+        Default is 'divide'
+    metric:             metric function
+        option for choosing error calculation method.
+        Default is mean_squared_error
+    Returns
+    -------
+    LOCO Values:        np.array
+        LOCO Feature importances
+    """
+    estimator, X, y, feature_names, normalize_result, normalize_num, error_type, metric = _check_importances_args(estimated_model, X, y, **kwargs)
+
+    fit_args = {} if fit_args is None else fit_args
+
+    prediction = estimator.predict(X)
+    start_loss = metric(y, prediction)
+
+    result = []
+    for feature in feature_names:
+        logging.debug(f"Processing feature = '{feature}'")
         if data_split:
-        
-            df_temp = df.copy()
+            df_temp = X.copy()
             df_train, df_test, y_train, y_test = train_test_split(df_temp, y, test_size=0.23, random_state=0)
-        
-            df_train = df_train.drop(current_feature,  axis=1)
-            df_test = df_test.drop(current_feature,  axis=1)
-        
-            estimated_model.fit(df_train, y_train)
-        
-            prediction = estimated_model.predict(df_test)
-            feature_loss = metrics_dict[metrics](y_test, prediction)
 
-            result[i] += feature_loss
-        
+            df_train = df_train.drop(feature, axis=1)
+            df_test = df_test.drop(feature, axis=1)
+
+            estimator.fit(df_train, y_train, **fit_args)
+            prediction = estimator.predict(df_test)
+
+            result.append(metric(y_test, prediction))
         else:
-            df_temp = df.copy()
-            df_temp = df_temp.drop(current_feature, axis=1)   # calculating error per every feature's eclusion
-        
-            estimated_model.fit(df_temp, y)
-        
-            prediction = estimated_model.predict(df_temp)
-            feature_loss = metrics_dict[metrics](y, prediction)
-        
-            result[i] += feature_loss
-    
+            df_temp = X.copy()
+            df_temp = df_temp.drop(feature, axis=1)
+
+            estimator.fit(df_temp, y, **fit_args)
+            prediction = estimator.predict(df_temp)
+
+            result.append(metric(y, prediction))
+
+    result = np.asarray(result)
+
     if error_type == 'divide':
         if start_loss == 0:
             start_loss = 1
-            if verbose:
-                logging.warning("ATTENTION. As start_loss is zero, it was changed to 1 to better represent result.")
+            logging.warning("ATTENTION. As start_loss is zero, it was changed to 1 to better represent result.")
         result = (result / start_loss) - 1
     else:
         result = result - start_loss
-    
-    if verbose:
-        logging.warning('Result:', result)
+
     if normalize_result:
-        result = normalize_num * (result / result.max())
-        if verbose:
-            logging.warning('Normalized result:', result)
-    
+        result = normalize_num * result / result.max()
+
     return result
 
 
-def get_pfi_feature_importances(estimated_model, X, y, normalize_result=True, normalize_num=1.0,
-                                error_type='divide', metrics='mean_squared_error', shuffle_num=3, verbose=False,
-                                prefit = True, X_train = None, y_train = None):    
-    
-    # === FUNCTION SUMMARY ============================================================================================
+def get_pfi_feature_importances(estimated_model, X, y, shuffle_num=3, **kwargs):
+    """
+    this function calculates PFI feature importances
+        1) Input trained model, table of features and column of target values
+        2) Make a prediction and evaluate start loss array with any metrics acceptable
+        3) Calculate the importance of features by dividing the vector of errors of the dataset with shuffled
+           values by the vector of errors of the original dataset or subtracting the vector of error values of
+           the original dataset from the vector of errors of the dataset with shuffled values
+        4) Normalize the result vector if needed
+    Parameters
+    ----------
+    estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit` and `predict` methods
+        Input model which we want to calculate PFI for
+    X:                  Array like data
+        A table of features values
+    y:                  Array like data
+        A column of target values
+    shuffle_num:         int
+        number of shuffles of selected feature
+    Keyword Arguments
+    -----------------
+    normalize_result:   bool
+        should we normalize results?
+        Default is True
+    normalize_num:      int or float
+        value for normalizing features upon
+        Default is 1.0
+    error_type:         str
+        Option for choosing method for calculating error. One of the 'divide', 'subtract'
+        Default is 'divide'
+    metric:             metric function
+        option for choosing error calculation method.
+        Default is mean_squared_error
+    Returns
+    -------
+    PFI Values:        np.array
+        PFI Feature importances
+    """
+    estimator, X, y, feature_names, normalize_result, normalize_num, error_type, metric = _check_importances_args(estimated_model, X, y, **kwargs)
 
-    #  1) Input trained model, table of features and column of target values
-    #  2) Make a prediction and evaluate start loss array with any metrics acceptable
-    #  3) Calculate the importance of features by dividing the vector of errors of the dataset with shuffled 
-    #     values by the vector of errors of the original dataset or subtracting the vector of error values of 
-    #     the original dataset from the vector of errors of the dataset with shuffled values 
-    #  4) Normalize the result vector if needed
-    
-    # TL;DR - this function calculates PFI feature importances
+    if shuffle_num < 1:
+        raise ValueError(f"Incorrect argument: shuffle_num. \nExpected: positive integer not less 1, got {shuffle_num}")
 
-    # ===LIST OF ARGUMENTS: ===========================================================================================
-    
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)
-    #  /// input model which we want to calculate PFI for
-    
-    #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values
-    
-    #  y  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values
-    
-    #  error_type  ///  (string - 'divide' or 'subtract')  ///  option for choosing method for calculating error
-    
-    #  metrics  ///  (string - any metrics from  metrics_dict.keys())  ///  option for choosing error calculation method
-    
-    #  shuffle_num  ///  number  ///  number of shuffles of selected feature
-    
-    #  normalize_num  /// (number)  ///  value for normalizing features upon
-    
-    #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed 
-       
-    # === OUTPUT ======================================================================================================
-    
-    # Output  /// (numpy.array) ///  function returns PFI feature importances  
+    prediction = estimator.predict(X)
+    start_loss = metric(y, prediction)
 
-    if estimated_model is None:
-        logging.warning("Incorerct or missing argument: estimated_model. Expected: Sklearn or any other suitable model" \
-                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
-        return
+    n_objects = X.shape[0]
+    result = []
+    for feature in feature_names:
+        logging.debug(f"Processing feature = '{feature}'")
+        feature_sum = 0
+        for _ in range(shuffle_num):
+            df_shuffled = X.copy()
+            idx = np.random.choice(np.arange(n_objects), size=n_objects, replace=False)
+            df_shuffled[feature] = X[feature].values[idx]
 
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
-        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" \
-                        + str(type(X)))
-        return
-
-    if not (isinstance(y, pd.DataFrame) or isinstance(y, np.ndarray) ):
-        logging.warning("Incorrect or missing argument: y. Expected: pd.DataFrame or np.ndarray, got:" + \
-                        str(type(y)))
-        return
-    
-    if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
-            logging.warning("Incorrect or missing argument: X_train. Expected: pd.DataFrame or np.ndarray, got:" \
-                            + str(type(X_train)))
-            return
-
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray)):
-            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, " \
-                            "got:" + str(type(y_train)))
-            return
-
-        try:
-            estimated_model.fit(X_train, y_train)
-        except:
-            logging.warning(
-                "Incorerct or missing argument: estimated_model. Expected: Sklearn or any other suitable model " \
-                "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
-            return
-
-    if error_type != 'divide' and error_type != 'subtract':
-        logging.warning("Incorrect or argument: metrics. Expected: str, got:" + str(type(metrics))) + \
-                        "(Only mean_squared_error is currently available)"
-        return
-    
-    if shuffle_num <= 0:
-        logging.warning("Incorrect or missimg argument: shuffle_num. Expected: positive integer not less 1, got: " + str(shuffle_num))
-        return
-    
-    if normalize_num <= 0:
-        logging.warning("Incorrect normalization value (negative, zero, or incorrect type). Best normalization " \
-                        "values for result representation are 1 and 100. Expected: positive integer, got:" + \
-                        str(normalize_num))
-        return
-    
-    metrics_dict = {'mean_squared_error': mean_squared_error}
-    if metrics not in metrics_dict.keys():
-        logging.warning("Incorrect or argument: metrics. Expected: str, got:" + str(type(metrics))) + \
-        "(Only mean_squared_error is currently available)"
-        return
-
-    feature_names = None
-    df = None
-    if isinstance(X, (np.ndarray)):
-        if feature_names is None:
-            feature_names = np.array(range(X.shape[1]))
-        df = pd.DataFrame(data=X.to_numpy(), columns=feature_names)
-    elif isinstance(X, (pd.core.frame.DataFrame)):
-        df = X.copy()
-        if feature_names is None:
-            feature_names = np.array(X.columns)
-    else:
-        logging.warning("Incorrect argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
-        return
-    
-    # -- main part --
-
-    n_objects = df.shape[0]
-    n_features = df.shape[1]
-    result = np.zeros(n_features)
-
-    try:
-        prediction = estimated_model.predict(df)
-    except:
-        logging.warning("Incorerct argument: estimated_model. Expected: Sklearn or any other suitable model " \
-                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
-        return
-
-    start_loss = metrics_dict[metrics](y, prediction)
-    
-    for i in range(n_features):
-        current_feature = feature_names[i]
-        
-        # shuffling values to kill any correllation
-        
-        for j in range(shuffle_num):
-            df_shuffled = df.copy()
-
-            idx = np.random.choice(np.arange(0, n_objects), size=n_objects, replace=False)
-            df_shuffled[current_feature] = df[current_feature].values[idx]
-            
             prediction = estimated_model.predict(df_shuffled)
-            feature_loss = metrics_dict[metrics](y, prediction)
-            
-            result[i] += feature_loss
-        
-    result = result / shuffle_num
-    
+            feature_sum += metric(y, prediction)
+
+        result.append(feature_sum / shuffle_num)
+
+    result = np.asarray(result)
+
     if error_type == 'divide':
         result = result / start_loss
-        
     else:
         result = result - start_loss
-    
+
     if normalize_result:
-        result = normalize_num * (result / result.max())
-    
+        result = normalize_num * result / result.max()
+
     return result
 
 
