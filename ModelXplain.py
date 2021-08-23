@@ -50,8 +50,6 @@ def _check_estimator(estimator, *attributes):
     return estimated_model
 
 
-
-
 def _check_importances_args(estimated_model, X, y, **kwargs):
 
     """
@@ -109,6 +107,112 @@ def _check_importances_args(estimated_model, X, y, **kwargs):
         raise ValueError("Provided metric function is not callable")
 
     return estimator, X, y, feature_names, normalize_result, normalize_num, error_type, metric
+
+
+
+def _check_dm(X, estimator, *attributes):   # проверка датасета с фичами и модели
+
+    if isinstance(X, pd.DataFrame):
+        feature_names = X.columns
+    else:
+        feature_names = list(range(X.shape[1]))
+        try:
+            X = pd.DataFrame(data=X, columns=feature_names)
+        except:
+            raise ValueError(f"Cannot create DataFrame from `X`")
+
+    for attr in attributes:
+        if not hasattr(estimator, attr):
+            raise ValueError(f"Provided estimator does not have '{attr}' method")
+
+    try:
+        estimated_model = estimator.copy()
+    except AttributeError:
+        from copy import deepcopy
+        estimated_model = deepcopy(estimator)
+    except:
+        raise ValueError("Cannot make copy of an estimator")
+    return
+
+    return estimated_model, X, feature_names
+
+
+def _check_y(y):        # проверка датасета с фичами и модели
+
+    if isinstance(y, (pd.DataFrame, pd.Series)):
+        y = y.to_numpy()
+    else
+        try:
+            y = np.asarray(y)
+        except:
+            raise ValueError(f"Cannot create DataFrame from `y`")
+
+    return y
+
+def _check_integer_values(**kwarg):     # Проверка на integer
+    out = []
+    for name, val in kwarg.items():
+        try:
+            out.append(int(val))
+        except:
+            raise TypeError('Incorrect type of ' + name + ': must be integer')
+
+    if len(out) > 1:
+        return tuple(out)
+    else:
+        return out[0]
+
+
+def _check_integer_values(**kwarg):     # Проверка на float
+    out = []
+    for name, val in kwarg.items():
+        try:
+            out.append(float(val))
+        except:
+            raise TypeError('Incorrect type of ' + name + ': must be float')
+
+    if len(out) > 1:
+        return tuple(out)
+    else:
+        return out[0]
+
+def _check_string(**kwarg):     # Проверка на string
+
+    out = []
+    for name, val in kwarg.items():
+        if isinstance(val, str)
+            out.append(float(val))
+        else:
+            raise TypeError('Incorrect type of ' + name + ': must be float')
+
+    if len(out) > 1:
+        return tuple(out)
+    else:
+        return out[0]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def get_loco_feature_importances(estimated_model, X, y, data_split=False, fit_args=None, **kwargs):
