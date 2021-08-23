@@ -141,7 +141,7 @@ def _check_y(y):        # проверка датасета с фичами и �
 
     if isinstance(y, (pd.DataFrame, pd.Series)):
         y = y.to_numpy()
-    else
+    else:
         try:
             y = np.asarray(y)
         except:
@@ -180,7 +180,7 @@ def _check_string(**kwarg):     # Проверка на string
 
     out = []
     for name, val in kwarg.items():
-        if isinstance(val, str)
+        if isinstance(val, str):
             out.append(float(val))
         else:
             raise TypeError('Incorrect type of ' + name + ': must be float')
