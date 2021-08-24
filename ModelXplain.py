@@ -109,7 +109,6 @@ def _check_importances_args(estimated_model, X, y, **kwargs):
     return estimator, X, y, feature_names, normalize_result, normalize_num, error_type, metric
 
 
-
 def _check_dm(X, estimator, *attributes):   # проверка датасета с фичами и модели
 
     if isinstance(X, pd.DataFrame):
@@ -149,6 +148,7 @@ def _check_y(y):        # проверка датасета с фичами и �
 
     return y
 
+
 def _check_integer_values(**kwarg):     # Проверка на integer
     out = []
     for name, val in kwarg.items():
@@ -163,11 +163,11 @@ def _check_integer_values(**kwarg):     # Проверка на integer
         return out[0]
 
 
-def _check_integer_values(**kwarg):     # Проверка на float
+def _check_float_values(**kwarg):     # Проверка на float
     out = []
     for name, val in kwarg.items():
         try:
-            out.append(float(val))
+            out.append(val)
         except:
             raise TypeError('Incorrect type of ' + name + ': must be float')
 
@@ -175,44 +175,6 @@ def _check_integer_values(**kwarg):     # Проверка на float
         return tuple(out)
     else:
         return out[0]
-
-def _check_string(**kwarg):     # Проверка на string
-
-    out = []
-    for name, val in kwarg.items():
-        if isinstance(val, str):
-            out.append(float(val))
-        else:
-            raise TypeError('Incorrect type of ' + name + ': must be float')
-
-    if len(out) > 1:
-        return tuple(out)
-    else:
-        return out[0]
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def get_loco_feature_importances(estimated_model, X, y, data_split=False, fit_args=None, **kwargs):
@@ -378,74 +340,32 @@ def get_pfi_feature_importances(estimated_model, X, y, shuffle_num=3, **kwargs):
     return result
 
 
-def pdp_plot_2D(estimated_model, X, feature_names, target_feature, prefit=True, grid_points_val=30,
-                X_train=None, y_train=None, verbose=False):
+def pdp_plot_2D(estimated_model, X, target_feature, grid_points_val=30):
+    """
+        Just a simple overlay of the pdpbox library function pdp_isolate for PDP/ICE plotting
 
-    # === FUNCTION SUMMARY ============================================================================================
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type
+                            with `fit` and `predict` methods
+            Input model which we want to plot PDP for
+        X:                  Array like data
+            A table of features' values
+        target_feature:         string
+            target feature for plotting PDP for
+        Keyword Arguments
+        -----------------
+        grid_points_val         integer
+            Number of points for plotting PDP.
+            30 by default.
+        Returns
+        -------
+        Plots PDP. No output.
+        """
 
-    # Just a simple overlay of the pdpbox library function pdp_isolate for PDP/ICE plotting
+    feature_names = None; #ЗАГЛУШКА
 
-    # ===LIST OF ARGUMENTS: ===========================================================================================
-    
-    #  estimated_model  ///  sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)
-    #  /// input model which we want to plot partial dependence for
-    
-    #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for plotting PDP
-    
-    #  feature_names  ///  (list)  ///   a list of feature names 
-    
-    #  target_name  ///  (string)  ///  name of the target feature to work with
-    
-    #  prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not  (OPTIONAL)
-    
-    #  X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model (OPTIONAL)
-    
-    #  y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model (OPTIONAL)
-    
-    #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
-       
-    # === OUTPUT ======================================================================================================
-    
-    # Output  ///  plots a PDP plot
-    
-    if estimated_model is None:
-        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model " \
-                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
-        return
-    
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
-        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
-        return
-
-    if not (isinstance(grid_points_val, int) or isinstance(grid_points_val, np.int_) or isinstance(grid_points_val, np.intc) or grid_points_val <= 0):
-        logging.warning("Incorrect argument: grid_points_val. Expected: positive integer , got:" + str(grid_points_val))
-        return
-
-    if not isinstance(feature_names, list):
-        logging.warning("Incorrеct or missing argument: y. Expected: pd.DataFrame or np.ndarray, got:" + \
-                        str(type(feature_names)))
-        return
-    
-    if not isinstance(target_feature, str):
-        logging.warning("Incorrect or missing argument: target_feature. Expected: str, got:" + str(type(target_feature)))
-        return
-    
-    if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
-            logging.warning(
-                "Incorrect or missing argument: X_train. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X_train)))
-            return
-
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray)):
-            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + str(type(y_train)))
-            return
-
-        try:
-            estimated_model.fit(X_train, y_train)
-        except:
-            logging.warning(
-                "Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model "
-                "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
+    #ВСТАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names,
                             feature=target_feature, num_grid_points=grid_points_val, grid_type='equal')
@@ -454,80 +374,37 @@ def pdp_plot_2D(estimated_model, X, feature_names, target_feature, prefit=True, 
     plt.show()
 
 
-def pdp_values(estimated_model, X, feature_names, target_feature, target_val_upper, target_val_lower,
-               grid_points_val=30, prefit=True, X_train=None, y_train=None, verbose=False):
+def pdp_values(estimated_model, X, target_feature, target_val_upper, target_val_lower, grid_points_val=30):
 
-    # === FUNCTION SUMMARY ============================================================================================
+    """
+        Just a simple overlay of the pdpbox library function pdp_isolate for calculating PDP values
 
-    # Just a simple overlay of the pdpbox library function pdp_isolate for calculating PDP values
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
+                            and `predict` methods
+            Input model which we want to calculate PDP values for
+        X:                  Array like data
+            A table of features' values
+        target_feature:         string
+            target feature for calculating PDP values for
+        target_val_upper        float
+            upper-boundary value of interval
+        target_val_lower        float
+            lower-boundary value of interval
+        Keyword Arguments
+        -----------------
+        grid_points_val         integer
+            Number of points for plotting PDP.
+            30 by default.
+        Returns
+        -------
+        PDP values           list([tuple], value, value))
+        """
 
-    # ===LIST OF ARGUMENTS: ===========================================================================================
-    
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)
-    #  /// input model which we want to plot partial dependence for
-    
-    #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for plotting PDP
-    
-    #  feature_names  ///  (list)  ///   a list of feature names 
-    
-    #  target_name  ///  (string)  ///  name of the target feature to work with
-    
-    #  prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not  (OPTIONAL)
-    
-    #  X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model (OPTIONAL)
-    
-    #  y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model (OPTIONAL) 
-    
-    #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
-    
-    # === OUTPUT ======================================================================================================
-    
-    # Output  ///  (list([tuple], value, value))  ///  outputs the intervals of feature values where the target variable falls 
-    # within the specified interval, the average and median within these intervals  
-    
-    if estimated_model is None:
-        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model "
-                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
-        return
-    
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
-            logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
-            return
-    
-    if not isinstance(feature_names, list):
-            logging.warning("Incorrect or missing argument: feature_names. Expected: str:" + str(type(feature_names)))
-            return
-    
-    if not isinstance(target_feature, str):
-            logging.warning("Incorrect or missing argument: target_feature. Expected: str:" + str(type(target_feature)))
-            return
-        
-    if not(isinstance(target_val_upper, int) or isinstance(target_val_upper, np.int_) or isinstance(target_val_upper, np.intc)):
-            logging.warning("Incorrect or missing argument: target_val_upper. Expected: value, got:" + str(type(target_val_upper)))
-            return
-    
-    if not(isinstance(target_val_lower, int) or isinstance(target_val_lower, np.int_) or isinstance(target_val_lower, np.intc)):
-            logging.warning("Incorrect or missing argument: target_val_lower. Expected: value, got:" + str(type(target_val_lower)))
-            return
+    feature_names = None;  # ЗАГЛУШКА
 
-    if not(isinstance(grid_points_val, int) or isinstance(grid_points_val, np.int_) or isinstance(grid_points_val, np.intc) or grid_points_val <=0):
-            logging.warning("Incorrect argument: grid_points_val. Expected: positive integer , got:" + str(grid_points_val))
-            return
-    
-    if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
-            logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
-            return
-
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray)):
-            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + str(type(y_train)))
-            return
-
-        try:
-            estimated_model.fit(X_train, y_train)
-        except:
-            logging.warning("Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model " \
-                "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
+    # ВСТАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names, 
                             feature=target_feature, num_grid_points=grid_points_val, grid_type='equal')
@@ -588,88 +465,40 @@ def pdp_values(estimated_model, X, feature_names, target_feature, target_val_upp
             current_interval_list = np.empty(0)
             flag = True
 
-    print(interval_list)
-    print(average_val_list)
-    print(median_val_list)
-    
     finals_list = [interval_list, average_val_list, median_val_list]
     
     return finals_list
 
 
-def ice_values(estimated_model, X, feature_names, target_feature, grid_val_start=None, grid_val_end=None,
-               prefit=True, X_train=None, y_train=None, verbose=False):
+def ice_values(estimated_model, X, target_feature, grid_val_start = None, grid_val_end = None):
+    """
+             Just a simple overlay of the pdpbox library function pdp_isolate for calculating ICE values
 
-    # === FUNCTION SUMMARY =========================================================================================
+            Parameters
+            ----------
+            estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
+                                and `predict` methods
+                Input model which we want to calculate ICE values for
+            X:                  Array like data
+                A table of features values
+            target_feature:         string
+                target feature for calculating ICE values for
+            Keyword Arguments
+            -----------------
+            grid_val_start        float
+                 start of the interval
+            grid_val_end           float
+                 end of the interval
+            Returns
+            -------
+            ICE values       pandas.DataFrame
+            """
 
-    # Just a simple overlay of the pdpbox library function pdp_isolate for calculating ICE values
+    feature_names = None;  # ЗАГЛУШКА
+    g_range = None;        # ЗАГЛУШКА
 
-    # ===LIST OF ARGUMENTS: ========================================================================================
-    
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict methods)
-    # /// input model which we want to calculate ICE values for
-    
-    #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for plotting PDP
-    
-    #  y  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for plotting PDP 
-    
-    #  feature_names  ///  (list)  ///   a list of feature names 
-    
-    #  target_name  ///  (string)  ///  name of the target feature to work with
-    
-    #  grid_val_start  ///  (number)  ///  start ov the interval
-    
-    #  grid_val_end  ///  (number)  ///  end of the interval
-    
-    #  prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not  (OPTIONAL)
-    
-    #  X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model (OPTIONAL)
-    
-    #  y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model (OPTIONAL)
-    
-    #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
-       
-    # === OUTPUT ======================================================================================================
-    
-    # pdp_goals.ice_lines  ///  (pandas.DataFrame)  /// outputs ICE values
-     
-    if estimated_model is None:
-        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model "
-                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
-        return
+    # ВСТАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
 
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
-        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
-        return
-
-    if grid_val_start is not None and grid_val_end is not None:
-        if not(isinstance(grid_val_start, int) or isinstance(grid_val_start, np.int_) or isinstance(grid_val_start, np.intc)):
-            logging.warning("Incorrect or missing argument: grid_val_start. Expected: value, got:" + str(type(grid_val_start)))
-            return
-
-        if not(isinstance(grid_val_end, int) or isinstance(grid_val_end, np.int_) or isinstance(grid_val_end, np.intc)):
-            logging.warning("Incorrect or missing argument: grid_val_end. Expected: value, got:" + str(type(grid_val_end)))
-            return
-
-        g_range = (grid_val_start, grid_val_end)
-
-    else:
-        g_range = None
-    
-    if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
-            logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
-            return
-
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray)):
-            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + \
-                            str(type(y_train)))
-            return
-
-        try:
-            estimated_model.fit(X_train, y_train)
-        except:
-            logging.warning("Estimated model must have fit method.")
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names,
                             feature=target_feature, num_grid_points=30, grid_type='equal',
@@ -678,56 +507,24 @@ def ice_values(estimated_model, X, feature_names, target_feature, grid_val_start
     return pdp_goals.ice_lines
 
 
-def shap_plot(estimated_model, X, prefit=True, X_train=None, y_train=None, verbose=False):
+def shap_plot(estimated_model, X):
+    """
+        Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
 
-    # === FUNCTION SUMMARY ============================================================================================
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
+                            and `predict` methods (WARNING: SHAP does not support Decision-tree-based models!)
+             Input model which we want to calculate ICE values for
+        X:                  Array like data
+             A table of features' values
 
-    # Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
-
-    # ===LIST OF ARGUMENTS: ===========================================================================================
-    
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit method)  
-    #  /// input model which we want to plot SHAP for
-     
-    #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for plotting PDP
-    
-    #  X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model (OPTIONAL)
-    
-    #  y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model (OPTIONAL)
-    
-    #  prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not  (OPTIONAL)
-    
-    #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
-       
-    # === OUTPUT ======================================================================================================
-    
-    # Output  /// outputs SHAP plot
-    
-    if estimated_model is None:
-        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model " \
-                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
-        return
-    
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
-        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
-        return
-    
-    if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
-            logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
-            return
-
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray)):
-            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" \
-                            + str(type(y_train)))
-            return
-
-        try:
-            estimated_model.fit(X_train, y_train)
-        except:
-            logging.warning(
-                "Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model "\
-                "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
+        Keyword Arguments
+        -----------------
+        None
+        --------
+        Outputs SHAP plot
+     """
 
     explainer = shap.Explainer(estimated_model)
     shap_values = explainer(X)
@@ -735,70 +532,32 @@ def shap_plot(estimated_model, X, prefit=True, X_train=None, y_train=None, verbo
     shap.plots.waterfall(shap_values[0])
 
 
-def lime_plot(estimated_model, X, max_feature_amount=10, selection_num=25, prefit=True,
-              X_train=None, y_train = None, work_mode='regression', verbose=False):
+def lime_plot(estimated_model, X, max_feature_amount=10, selection_num=25, work_mode='regression'):
+    """
+        Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
 
-    # === FUNCTION SUMMARY ============================================================================================
-
-    # Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
-
-    # ===LIST OF ARGUMENTS: ===========================================================================================
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
+                            and `predict` methods (WARNING: SHAP does not support Decision-tree-based models!)
+            Input model which we want to calculate ICE values for
+        X:                  Array like data
+            A table of features' values
+        Keyword Arguments
+        -----------------
+         max_feature_amount  integer
+            Maximum amount of features for plotting LIME for
+            10 by default
+        selection_num       integer
+            number of elements for plotting LIME
+        work_mode           string
+            work mode, 'regression' by default.
+            (ATTENTION - 'classification' MODE IS NOT SUPPORTED YET)
+        --------
+        Outputs LIME plot
+    """
     
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict method)  
-    #/// input model which we want to plot LIME for
-    
-    #  X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model 
-    
-    #  y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model 
-    
-    #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for plotting PDP
-    
-    #  prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not  (OPTIONAL)
-    
-    #  selection_num  ///  (value)  ///  number of elements for plotting LIME (OPTIONAL)
-    
-    #  work_mode  ///  (string)  ///  work mode, 'regression' by default.
-    #  (ATTENTION - 'classification' MODE IS NOT SUPPORTED YET)
-    
-    #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
-       
-    # === OUTPUT ==============================================================================================================
-    
-    # Output  /// outputs SHAP plot
-    
-    if estimated_model is None:
-        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model "
-                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
-        return
-    
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
-        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
-        return
-    
-    if not(isinstance(max_feature_amount, int) or isinstance(max_feature_amount, np.int_) or isinstance(max_feature_amount, np.intc)) or max_feature_amount <= 0: 
-        logging.warning("Incorrect argument: max_feature_amount. Expected: value, got:" + str(type(max_feature_amount)))
-        return
-        
-    if not(isinstance(selection_num, int) or isinstance(selection_num, np.int_) or isinstance(selection_num, np.intc)) or selection_num <= 0:
-        logging.warning("Incorrect argument: selection_num. Expected: value, got:" + str(type(selection_num)))
-        return
-    
-    if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
-            logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
-            return
-
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray) ):
-            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" + str( \
-                type(y_train)))
-            return
-
-        try:
-            estimated_model.fit(X_train, y_train)
-        except:
-            logging.warning(
-                "Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model "
-                "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
+    #ДОБАВИТЬ ПРОВЕРКИ
 
     explainer = LimeTabularExplainer(training_data=X.to_numpy(),
         feature_names=list(X.columns),
@@ -809,69 +568,31 @@ def lime_plot(estimated_model, X, max_feature_amount=10, selection_num=25, prefi
     plt.tight_layout()
 
 
-def pdp_plot_3D(estimated_model, X, feature_names, feature_name_1, feature_name_2,
-                prefit=True, X_train=None, y_train=None, verbose=False):
+def pdp_plot_3D(estimated_model, X, feature_name_1, feature_name_2):
+    """
+        Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
 
-    # === FUNCTION SUMMARY ============================================================================================
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
+                            and `predict` methods (WARNING: SHAP does not support Decision-tree-based models!)
+            Input model which we want to calculate ICE values for
+        X:                  Array like data
+            A table of features' values
+        feature_name_1      string
+            1st feature name
+        feature_name_2      string
+            2nd feature name
+        Keyword Arguments
+        -----------------
+        None
+        --------
+        Outputs PDP interaction plot for 2 features as a heatmap
+    """
 
-    # Just a simple overlay of the "shap"-library method for calculating 3D PDP plot for 2 features' interaction
+    feature_names = None;  # ЗАГЛУШКА
 
-    # ===LIST OF ARGUMENTS: ===========================================================================================
-    
-    #  estimated_model  ///  (sklearn, XGBoost, CatBoost or any other model class type with .fit and .predict method)  
-    #/// input model which we want to plot LIME for
-    
-    #  X  ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for plotting PDP
-    
-    #  feature_name_1  ///  (string)  ///  1st feature name to plot pdp interaction for
-    
-    #  feature_name_2  ///  (string)  ///  2nd feature name to plot pdp interaction for
-    
-    #  prefit  ///  (bool)  ///  indicator of whether you provide a pre-trained model or not  (OPTIONAL)
-    
-    #  X_train ///  (numpy.array or pandas.DataFrame)  ///  a table of features values for training model (OPTIONAL)
-    
-    #  y_train  ///  (numpy.array or pandas.DataFrame)  ///  a coloumn of target values for training model (OPTIONAL)
-    
-    #  verbose  ///  (bool) (OPTIONAL-REMOVAL REQUIRED)  ///  option for outputting detailed (OPTIONAL)
-       
-    # === OUTPUT ======================================================================================================
-    
-    # Output  /// outputs 3D "heat" PDP plot
-
-    if estimated_model is None:
-        logging.warning("Incorrect or missing argument: estimated_model. Expected: Sklearn or any other suitable model "
-                        "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
-        return
-
-    if not (isinstance(X, pd.DataFrame) or isinstance(X, np.ndarray)):
-        logging.warning("Incorrect or missing argument: X. Expected: pd.DataFrame or np.ndarray, got:" + str(type(X)))
-        return
-             
-    if not isinstance(feature_name_1, str):
-        logging.warning("Incorrect or missing argument: feature_name_1. Expected: str:" + str(type(feature_name_1)))
-        return
-    
-    if not isinstance(feature_name_2, str):
-        logging.warning("Incorrect or missing argument: feature_name_2. Expected: str:" + str(type(feature_name_2)))
-        return
-
-    if not prefit:
-        if not (isinstance(X_train, pd.DataFrame) or isinstance(X_train, np.ndarray)):
-            logging.warning("Incorrect or missing argument: prefit. Expected: bool, got:" + str(type(prefit)))
-            return
-
-        if not (isinstance(y_train, pd.DataFrame) or isinstance(y_train, np.ndarray)):
-            logging.warning("Incorrect or missing argument: y_train. Expected: pd.DataFrame or np.ndarray, got:" \
-                            + str(type(y_train)))
-            return
-
-        try:
-            estimated_model.fit(X_train, y_train)
-        except:
-            logging.warning(
-                "Incorrect argument: estimated_model. Expected: Sklearn or any other suitable model "
-                "with .fit() and .predict() methods, got:" + str(type(estimated_model)))
+    # ДОБАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
 
     pdp_goal = pdp.pdp_interact(model=estimated_model, dataset=X, model_features=feature_names, 
                                   features=[feature_name_1, feature_name_2])
