@@ -2,39 +2,39 @@
 # 
 # Have fun!
 
-#importing all nessessary libraries beforehand
+# importing all nessessary libraries beforehand
 
-import time 
 import shap
 import numpy as np
 import pandas as pd
 import logging
 
 from sklearn.model_selection import train_test_split
-from PyALE import ale
 from sklearn.metrics import mean_squared_error
 from lime.lime_tabular import LimeTabularExplainer
 from matplotlib import pyplot as plt
-from pdpbox import pdp, get_dataset, info_plots
+from pdpbox import pdp
 
 
-def _check_estimator(estimator, *attributes):
+# =============== AUXILIARY FUNCTIONS ===============
 
+
+def _check_dataset_model(estimator, X, *attributes):
     """
-      Auxilary function to check if model is suitable for working with
-      
-      Parameters
-      ----------
-      estimator:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit` and `predict` methods
-          Input model which we want to check
-      attributes:   Class attributes
-          Attributes of the model we want to check
-      Keyword Arguments
-      -----------------
-      Returns
-      -------
-      Nothing
-      """
+    Auxiliary function to check dataset and if model is suitable for working with
+    """
+
+    if isinstance(X, pd.DataFrame):
+        feature_names = X.columns
+    else:
+        if isinstance(X, np.ndarray):
+            feature_names = list(range(X.shape[1]))
+        else:
+            feature_names = list(range(len(X[0])))
+        try:
+            X = pd.DataFrame(data=X, columns=feature_names)
+        except:
+            raise ValueError(f"Cannot create DataFrame from `X`")
 
     for attr in attributes:
         if not hasattr(estimator, attr):
@@ -46,51 +46,58 @@ def _check_estimator(estimator, *attributes):
         from copy import deepcopy
         estimated_model = deepcopy(estimator)
     except:
-        raise ValueError("Cannot make copy of an estimator")
-    return estimated_model
+        raise ValueError("Cannot make copy of the provided estimator")
+
+    return estimated_model, X, feature_names
 
 
-def _check_importances_args(estimated_model, X, y, **kwargs):
-
+def _check_y(y):
     """
-      Auxilary function for checking arguments for get_loco_feature_importances and get_pfi_feature_importances
-
-      Parameters
-      ----------
-        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with
-                            `fit` and `predict` methods
-           Input model which we want to calculate LOCO for
-        X:                  Array like data
-             Features dataset
-        y:                  Array like data
-            Target dataset
-        kwargs:
-            optional arguments
-        Keyword Arguments
-        -----------------
-        None
-          
-        Returns
-         -------
-        None
+    Auxiliary function to check target variable
     """
-
-
-    if isinstance(X, pd.DataFrame):
-        feature_names = X.columns
-    else:
-        feature_names = list(range(X.shape[1]))
-        try:
-            X = pd.DataFrame(data=X, columns=feature_names)
-        except:
-            raise ValueError(f"Cannot create DataFrame from `X`")
 
     if isinstance(y, (pd.DataFrame, pd.Series)):
         y = y.to_numpy()
     else:
-        y = np.asarray(y)
+        try:
+            y = np.asarray(y)
+        except:
+            raise ValueError(f"Cannot create Numpy Array from `y`")
+    return y
 
-    estimator = _check_estimator(estimated_model, "fit", "predict")
+
+def _check_importances_args(estimated_model, X, y, **kwargs):
+    """
+    Auxiliary function for checking arguments for get_loco_feature_importances and get_pfi_feature_importances
+
+    Parameters
+    ----------
+    estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with
+                        `fit` and `predict` methods
+        Input model which we want to calculate LOCO for
+    X:                  Array like data
+        Features dataset
+    y:                  Array like data
+        Target dataset
+    kwargs:
+        optional arguments
+    Keyword Arguments
+    -----------------
+    normalize_result:
+
+    normalize_num:
+
+    error_type:         string
+
+    metric:
+
+    Returns
+    -------
+    Checked input parameters
+    """
+
+    estimator, X, feature_names = _check_dataset_model(estimated_model, X, "fit", "predict")
+    y = _check_y(y)
 
     normalize_result = kwargs.get("normalize_result", True)
     normalize_num = kwargs.get("normalize_num", 1.0)
@@ -107,46 +114,6 @@ def _check_importances_args(estimated_model, X, y, **kwargs):
         raise ValueError("Provided metric function is not callable")
 
     return estimator, X, y, feature_names, normalize_result, normalize_num, error_type, metric
-
-
-def _check_dm(X, estimator, *attributes):   # проверка датасета с фичами и модели
-
-    if isinstance(X, pd.DataFrame):
-        feature_names = X.columns
-    else:
-        feature_names = list(range(X.shape[1]))
-        try:
-            X = pd.DataFrame(data=X, columns=feature_names)
-        except:
-            raise ValueError(f"Cannot create DataFrame from `X`")
-
-    for attr in attributes:
-        if not hasattr(estimator, attr):
-            raise ValueError(f"Provided estimator does not have '{attr}' method")
-
-    try:
-        estimated_model = estimator.copy()
-    except AttributeError:
-        from copy import deepcopy
-        estimated_model = deepcopy(estimator)
-    except:
-        raise ValueError("Cannot make copy of an estimator")
-    return
-
-    return estimated_model, X, feature_names
-
-
-def _check_y(y):        # проверка датасета с фичами и модели
-
-    if isinstance(y, (pd.DataFrame, pd.Series)):
-        y = y.to_numpy()
-    else:
-        try:
-            y = np.asarray(y)
-        except:
-            raise ValueError(f"Cannot create DataFrame from `y`")
-
-    return y
 
 
 def _check_integer_values(**kwarg):     # Проверка на integer
@@ -175,6 +142,9 @@ def _check_float_values(**kwarg):     # Проверка на float
         return tuple(out)
     else:
         return out[0]
+
+
+# ================= MAIN FUNCTIONS =================
 
 
 def get_loco_feature_importances(estimated_model, X, y, data_split=False, fit_args=None, **kwargs):
@@ -220,7 +190,9 @@ def get_loco_feature_importances(estimated_model, X, y, data_split=False, fit_ar
     LOCO Values:        np.array
         LOCO Feature importances
     """
-    estimator, X, y, feature_names, normalize_result, normalize_num, error_type, metric = _check_importances_args(estimated_model, X, y, **kwargs)
+
+    estimator, X, y, feature_names, normalize_result, normalize_num, error_type, metric = \
+        _check_importances_args(estimated_model, X, y, **kwargs)
 
     fit_args = {} if fit_args is None else fit_args
 
