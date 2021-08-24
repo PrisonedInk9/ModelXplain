@@ -21,7 +21,7 @@ from pdpbox import pdp
 
 def _check_dataset_model(estimator, X, *attributes):
     """
-    Auxiliary function to check dataset and if model is suitable for working with
+        Auxiliary function to check dataset and if model is suitable for working with
     """
 
     if isinstance(X, pd.DataFrame):
@@ -53,7 +53,7 @@ def _check_dataset_model(estimator, X, *attributes):
 
 def _check_y(y):
     """
-    Auxiliary function to check target variable
+        Auxiliary function to check target variable
     """
 
     if isinstance(y, (pd.DataFrame, pd.Series)):
@@ -68,32 +68,32 @@ def _check_y(y):
 
 def _check_importances_args(estimated_model, X, y, **kwargs):
     """
-    Auxiliary function for checking arguments for get_loco_feature_importances and get_pfi_feature_importances
+        Auxiliary function for checking arguments for get_loco_feature_importances and get_pfi_feature_importances
 
-    Parameters
-    ----------
-    estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with
-                        `fit` and `predict` methods
-        Input model which we want to calculate LOCO for
-    X:                  Array like data
-        Features dataset
-    y:                  Array like data
-        Target dataset
-    kwargs:
-        optional arguments
-    Keyword Arguments
-    -----------------
-    normalize_result:
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with
+                            `fit` and `predict` methods
+            Input model which we want to calculate LOCO for
+        X:                  Array like data
+            Features dataset
+        y:                  Array like data
+            Target dataset
+        kwargs:
+            optional arguments
+        Keyword Arguments
+        -----------------
+        normalize_result:
 
-    normalize_num:
+        normalize_num:
 
-    error_type:         string
+        error_type:         string
 
-    metric:
+        metric:
 
-    Returns
-    -------
-    Checked input parameters
+        Returns
+        -------
+        Checked input parameters
     """
 
     estimator, X, feature_names = _check_dataset_model(estimated_model, X, "fit", "predict")
@@ -149,46 +149,46 @@ def _check_float_values(**kwarg):     # Проверка на float
 
 def get_loco_feature_importances(estimated_model, X, y, data_split=False, fit_args=None, **kwargs):
     """
-    This function calculates LOCO feature importances.
-        1) Input trained model, table of features and column of target values
-        2) Make a prediction and evaluate start loss array with any metrics acceptable
-        3) Reshape your model with datasets with every feature alternately excluded and write error for every
-            excluded feature into separate array
-        4) For every feature divide the error vector for the excluded feature by the error vector of the full dataset or
-            subtract the error vector of the full dataset from the error vector for the excluded feature
-        5) Normalize the result vector if needed
-    Parameters
-    ----------
-    estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit` and `predict` methods
-        Input model which we want to calculate LOCO for
-    X:                  Array like data
-        A table of features values
-    y:                  Array like data
-        A column of target values
-    data_split:         bool
-        option for splitting data when calculatig
-        Default is False
-    fit_args:           dict
-        Optional argumets for fitting model
-        Default is None
-    Keyword Arguments
-    -----------------
-    normalize_result:   bool
-        should we normalize results?
-        Default is True
-    normalize_num:      int or float
-        value for normalizing features upon
-        Default is 1.0
-    error_type:         str
-        Option for choosing method for calculating error. One of the 'divide', 'subtract'
-        Default is 'divide'
-    metric:             metric function
-        option for choosing error calculation method.
-        Default is mean_squared_error
-    Returns
-    -------
-    LOCO Values:        np.array
-        LOCO Feature importances
+        This function calculates LOCO feature importances.
+            1) Input trained model, table of features and column of target values
+            2) Make a prediction and evaluate start loss array with any metrics acceptable
+            3) Reshape your model with datasets with every feature alternately excluded and write error for every
+                excluded feature into separate array
+            4) For every feature divide the error vector for the excluded feature by the error vector of the full dataset or
+                subtract the error vector of the full dataset from the error vector for the excluded feature
+            5) Normalize the result vector if needed
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit` and `predict` methods
+            Input model which we want to calculate LOCO for
+        X:                  Array like data
+            A table of features values
+        y:                  Array like data
+            A column of target values
+        data_split:         bool
+            option for splitting data when calculatig
+            Default is False
+        fit_args:           dict
+            Optional argumets for fitting model
+            Default is None
+        Keyword Arguments
+        -----------------
+        normalize_result:   bool
+            should we normalize results?
+            Default is True
+        normalize_num:      int or float
+            value for normalizing features upon
+            Default is 1.0
+        error_type:         str
+            Option for choosing method for calculating error. One of the 'divide', 'subtract'
+            Default is 'divide'
+        metric:             metric function
+            option for choosing error calculation method.
+            Default is mean_squared_error
+        Returns
+        -------
+        LOCO Values:        np.array
+            LOCO Feature importances
     """
 
     estimator, X, y, feature_names, normalize_result, normalize_num, error_type, metric = \
@@ -240,42 +240,43 @@ def get_loco_feature_importances(estimated_model, X, y, data_split=False, fit_ar
 
 def get_pfi_feature_importances(estimated_model, X, y, shuffle_num=3, **kwargs):
     """
-    this function calculates PFI feature importances
-        1) Input trained model, table of features and column of target values
-        2) Make a prediction and evaluate start loss array with any metrics acceptable
-        3) Calculate the importance of features by dividing the vector of errors of the dataset with shuffled
-           values by the vector of errors of the original dataset or subtracting the vector of error values of
-           the original dataset from the vector of errors of the dataset with shuffled values
-        4) Normalize the result vector if needed
-    Parameters
-    ----------
-    estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit` and `predict` methods
-        Input model which we want to calculate PFI for
-    X:                  Array like data
-        A table of features values
-    y:                  Array like data
-        A column of target values
-    shuffle_num:         int
-        number of shuffles of selected feature
-    Keyword Arguments
-    -----------------
-    normalize_result:   bool
-        should we normalize results?
-        Default is True
-    normalize_num:      int or float
-        value for normalizing features upon
-        Default is 1.0
-    error_type:         str
-        Option for choosing method for calculating error. One of the 'divide', 'subtract'
-        Default is 'divide'
-    metric:             metric function
-        option for choosing error calculation method.
-        Default is mean_squared_error
-    Returns
-    -------
-    PFI Values:        np.array
-        PFI Feature importances
+        this function calculates PFI feature importances
+            1) Input trained model, table of features and column of target values
+            2) Make a prediction and evaluate start loss array with any metrics acceptable
+            3) Calculate the importance of features by dividing the vector of errors of the dataset with shuffled
+               values by the vector of errors of the original dataset or subtracting the vector of error values of
+               the original dataset from the vector of errors of the dataset with shuffled values
+            4) Normalize the result vector if needed
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit` and `predict` methods
+            Input model which we want to calculate PFI for
+        X:                  Array like data
+            A table of features values
+        y:                  Array like data
+            A column of target values
+        shuffle_num:         int
+            number of shuffles of selected feature
+        Keyword Arguments
+        -----------------
+        normalize_result:   bool
+            should we normalize results?
+            Default is True
+        normalize_num:      int or float
+            value for normalizing features upon
+            Default is 1.0
+        error_type:         str
+            Option for choosing method for calculating error. One of the 'divide', 'subtract'
+            Default is 'divide'
+        metric:             metric function
+            option for choosing error calculation method.
+            Default is mean_squared_error
+        Returns
+        -------
+        PFI Values:        np.array
+            PFI Feature importances
     """
+
     estimator, X, y, feature_names, normalize_result, normalize_num, error_type, metric = _check_importances_args(estimated_model, X, y, **kwargs)
 
     if shuffle_num < 1:
@@ -335,7 +336,7 @@ def pdp_plot_2D(estimated_model, X, target_feature, grid_points_val=30):
         Plots PDP. No output.
         """
 
-    feature_names = None; #ЗАГЛУШКА
+    feature_names = None # ЗАГЛУШКА
 
     #ВСТАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
 
@@ -372,9 +373,9 @@ def pdp_values(estimated_model, X, target_feature, target_val_upper, target_val_
         Returns
         -------
         PDP values           list([tuple], value, value))
-        """
+    """
 
-    feature_names = None;  # ЗАГЛУШКА
+    feature_names = None  # ЗАГЛУШКА
 
     # ВСТАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
 
@@ -444,30 +445,30 @@ def pdp_values(estimated_model, X, target_feature, target_val_upper, target_val_
 
 def ice_values(estimated_model, X, target_feature, grid_val_start = None, grid_val_end = None):
     """
-             Just a simple overlay of the pdpbox library function pdp_isolate for calculating ICE values
+        Just a simple overlay of the pdpbox library function pdp_isolate for calculating ICE values
 
-            Parameters
-            ----------
-            estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
-                                and `predict` methods
-                Input model which we want to calculate ICE values for
-            X:                  Array like data
-                A table of features values
-            target_feature:         string
-                target feature for calculating ICE values for
-            Keyword Arguments
-            -----------------
-            grid_val_start        float
-                 start of the interval
-            grid_val_end           float
-                 end of the interval
-            Returns
-            -------
-            ICE values       pandas.DataFrame
-            """
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
+                            and `predict` methods
+            Input model which we want to calculate ICE values for
+        X:                  Array like data
+            A table of features values
+        target_feature:         string
+            target feature for calculating ICE values for
+        Keyword Arguments
+        -----------------
+        grid_val_start        float
+            start of the interval
+        grid_val_end           float
+            end of the interval
+        Returns
+        -------
+        ICE values       pandas.DataFrame
+    """
 
-    feature_names = None;  # ЗАГЛУШКА
-    g_range = None;        # ЗАГЛУШКА
+    feature_names = None  # ЗАГЛУШКА
+    g_range = None        # ЗАГЛУШКА
 
     # ВСТАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
 
@@ -491,9 +492,7 @@ def shap_plot(estimated_model, X):
         X:                  Array like data
              A table of features' values
 
-        Keyword Arguments
-        -----------------
-        None
+        Returns
         --------
         Outputs SHAP plot
      """
@@ -525,6 +524,8 @@ def lime_plot(estimated_model, X, max_feature_amount=10, selection_num=25, work_
         work_mode           string
             work mode, 'regression' by default.
             (ATTENTION - 'classification' MODE IS NOT SUPPORTED YET)
+
+        Returns
         --------
         Outputs LIME plot
     """
@@ -555,14 +556,13 @@ def pdp_plot_3D(estimated_model, X, feature_name_1, feature_name_2):
             1st feature name
         feature_name_2      string
             2nd feature name
-        Keyword Arguments
-        -----------------
-        None
+
+        Returns
         --------
         Outputs PDP interaction plot for 2 features as a heatmap
     """
 
-    feature_names = None;  # ЗАГЛУШКА
+    feature_names = None  # ЗАГЛУШКА
 
     # ДОБАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
 
