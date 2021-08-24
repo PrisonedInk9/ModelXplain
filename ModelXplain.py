@@ -146,7 +146,7 @@ def _check_float_values(**kwarg):     # Проверка на float
 
 # ================= MAIN FUNCTIONS =================
 
-
+#UP TO DATE
 def get_loco_feature_importances(estimated_model, X, y, data_split=False, fit_args=None, **kwargs):
     """
         This function calculates LOCO feature importances.
@@ -237,7 +237,7 @@ def get_loco_feature_importances(estimated_model, X, y, data_split=False, fit_ar
 
     return result
 
-
+#UP TO DATE
 def get_pfi_feature_importances(estimated_model, X, y, shuffle_num=3, **kwargs):
     """
         this function calculates PFI feature importances
@@ -312,8 +312,8 @@ def get_pfi_feature_importances(estimated_model, X, y, shuffle_num=3, **kwargs):
 
     return result
 
-
-def pdp_plot_2D(estimated_model, X, target_feature, grid_points_val=30):
+#UPDATED CHECKERS
+def pdp_plot_2D(estimated_model, X, target_feature, **kwargs):
     """
         Just a simple overlay of the pdpbox library function pdp_isolate for PDP/ICE plotting
 
@@ -336,18 +336,20 @@ def pdp_plot_2D(estimated_model, X, target_feature, grid_points_val=30):
         Plots PDP. No output.
         """
 
-    feature_names = None # ЗАГЛУШКА
+    X, estimated_model, feature_names = _check_dataset_model(X, estimated_model)
 
-    #ВСТАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
+    grid_points_val = kwargs.get('grid_points_val', 30)
+
+    grid_points_val = _check_float_values(grid_points_val=grid_points_val)
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names,
-                            feature=target_feature, num_grid_points=grid_points_val, grid_type='equal')
+                               feature=target_feature, num_grid_points=grid_points_val, grid_type='equal')
 
     pdp.pdp_plot(pdp_goals, target_feature)
     plt.show()
 
 
-def pdp_values(estimated_model, X, target_feature, target_val_upper, target_val_lower, grid_points_val=30):
+def pdp_values(estimated_model, X, target_feature, target_val_upper, target_val_lower, **kwargs):
 
     """
         Just a simple overlay of the pdpbox library function pdp_isolate for calculating PDP values
@@ -375,9 +377,16 @@ def pdp_values(estimated_model, X, target_feature, target_val_upper, target_val_
         PDP values           list([tuple], value, value))
     """
 
-    feature_names = None  # ЗАГЛУШКА
+    X, estimated_model, feature_names = _check_dataset_model(X, estimated_model)
 
-    # ВСТАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
+    grid_points_val = kwargs.get('grid_points_val', 30)
+
+    target_val_upper, target_val_lower, grid_points_val = _check_float_values(target_val_upper = target_val_upper,
+                                                                              target_val_lower = target_val_lower,
+                                                                              grid_points_val = grid_points_val)
+
+
+
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names, 
                             feature=target_feature, num_grid_points=grid_points_val, grid_type='equal')
@@ -442,8 +451,8 @@ def pdp_values(estimated_model, X, target_feature, target_val_upper, target_val_
     
     return finals_list
 
-
-def ice_values(estimated_model, X, target_feature, grid_val_start = None, grid_val_end = None):
+#UPDATED CHECKERS
+def ice_values(estimated_model, X, target_feature, grid_val_start, grid_val_end):
     """
         Just a simple overlay of the pdpbox library function pdp_isolate for calculating ICE values
 
@@ -456,21 +465,23 @@ def ice_values(estimated_model, X, target_feature, grid_val_start = None, grid_v
             A table of features values
         target_feature:         string
             target feature for calculating ICE values for
-        Keyword Arguments
-        -----------------
         grid_val_start        float
             start of the interval
         grid_val_end           float
             end of the interval
+        Keyword Arguments
+        -----------------
+        None
         Returns
         -------
         ICE values       pandas.DataFrame
     """
 
-    feature_names = None  # ЗАГЛУШКА
-    g_range = None        # ЗАГЛУШКА
+    X, estimated_model, feature_names = _check_dataset_model(X, estimated_model)
 
-    # ВСТАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
+    grid_val_start, grid_val_end = _check_float_values(grid_val_start = grid_val_start, grid_val_end = grid_val_end)
+
+    g_range = (grid_val_start, grid_val_end)
 
 
     pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names,
@@ -479,68 +490,7 @@ def ice_values(estimated_model, X, target_feature, grid_val_start = None, grid_v
 
     return pdp_goals.ice_lines
 
-
-def shap_plot(estimated_model, X):
-    """
-        Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
-
-        Parameters
-        ----------
-        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
-                            and `predict` methods (WARNING: SHAP does not support Decision-tree-based models!)
-             Input model which we want to calculate ICE values for
-        X:                  Array like data
-             A table of features' values
-
-        Returns
-        --------
-        Outputs SHAP plot
-     """
-
-    explainer = shap.Explainer(estimated_model)
-    shap_values = explainer(X)
-    print(type(shap_values))
-    shap.plots.waterfall(shap_values[0])
-
-
-def lime_plot(estimated_model, X, max_feature_amount=10, selection_num=25, work_mode='regression'):
-    """
-        Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
-
-        Parameters
-        ----------
-        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
-                            and `predict` methods (WARNING: SHAP does not support Decision-tree-based models!)
-            Input model which we want to calculate ICE values for
-        X:                  Array like data
-            A table of features' values
-        Keyword Arguments
-        -----------------
-         max_feature_amount  integer
-            Maximum amount of features for plotting LIME for
-            10 by default
-        selection_num       integer
-            number of elements for plotting LIME
-        work_mode           string
-            work mode, 'regression' by default.
-            (ATTENTION - 'classification' MODE IS NOT SUPPORTED YET)
-
-        Returns
-        --------
-        Outputs LIME plot
-    """
-    
-    #ДОБАВИТЬ ПРОВЕРКИ
-
-    explainer = LimeTabularExplainer(training_data=X.to_numpy(),
-        feature_names=list(X.columns),
-        mode=work_mode, random_state=0)
-
-    exp = explainer.explain_instance(X.to_numpy()[selection_num], estimated_model.predict, num_features=max_feature_amount)
-    exp.as_pyplot_figure()
-    plt.tight_layout()
-
-
+#UPDATED CHECKS
 def pdp_plot_3D(estimated_model, X, feature_name_1, feature_name_2):
     """
         Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
@@ -562,7 +512,7 @@ def pdp_plot_3D(estimated_model, X, feature_name_1, feature_name_2):
         Outputs PDP interaction plot for 2 features as a heatmap
     """
 
-    feature_names = None  # ЗАГЛУШКА
+    X, estimated_model, feature_names = _check_dataset_model(X, estimated_model)
 
     # ДОБАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
 
@@ -576,6 +526,89 @@ def pdp_plot_3D(estimated_model, X, feature_name_1, feature_name_2):
                                   plot_pdp=True)
 
     fig.show()
+
+#UP TO DATE
+def shap_plot(estimated_model, X):
+    """
+        Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
+
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
+                            and `predict` methods (WARNING: SHAP does not support Decision-tree-based models!)
+             Input model which we want to calculate ICE values for
+        X:                  Array like data
+             A table of features' values
+
+        Returns
+        --------
+        Outputs SHAP plot
+     """
+
+    X, estimated_model, _ = _check_dataset_model(X, estimated_model)
+
+    explainer = shap.Explainer(estimated_model)
+    shap_values = explainer(X)
+    print(type(shap_values))
+    shap.plots.waterfall(shap_values[0])
+
+#UP TO DATE
+def lime_plot(estimated_model, X, **kwargs):
+    """
+        Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
+
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
+                            and `predict` methods (WARNING: SHAP does not support Decision-tree-based models!)
+            Input model which we want to calculate ICE values for
+        X:                  Array like data
+            A table of features' values
+        Keyword Arguments
+        -----------------
+         max_feature_amount  integer
+            Maximum amount of features for plotting LIME for
+            10 by default
+         selection_num       integer
+            number of elements for plotting LIME
+            25 by default
+         work_mode           string
+            work mode, 'regression' by default.
+            (ATTENTION - 'classification' MODE IS NOT SUPPORTED YET)
+
+        Returns
+        --------
+        Outputs LIME plot
+    """
+
+    max_feature_amount = kwargs.get("max_feature_amount", 10)
+    selection_num = kwargs.get("selection_num", 25)
+    work_mode = kwargs.get("work_mode", 'regression')
+
+
+
+    X, estimated_model, _ = _check_dataset_model(X, estimated_model)
+    max_feature_amount, selection_num = _check_integer_values(max_feature_amount = max_feature_amount,
+                                                              selection_num = selection_num)
+
+    if max_feature_amount <= 0:
+        raise ValueError("Incorrect feature amount. You should have at least one feature. Got:"+str(max_feature_amount))
+
+    if selection_num <= 0:
+        raise ValueError("Incorrect selection amount. You should have at least one element. Got:"+str(selection_num))
+
+
+
+    explainer = LimeTabularExplainer(training_data=X.to_numpy(),
+        feature_names=list(X.columns),
+        mode=work_mode, random_state=0)
+
+    exp = explainer.explain_instance(X.to_numpy()[selection_num], estimated_model.predict, num_features=max_feature_amount)
+    exp.as_pyplot_figure()
+    plt.tight_layout()
+
+
+# ================= ADDITIONAL FUNCTIONS =================
 
 
 ## Target metric count for objects belongs to pair of features and they intervals. IMPORTANT: MIGHT BE NOT RELIABLE
