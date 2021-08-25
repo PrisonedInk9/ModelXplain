@@ -366,7 +366,7 @@ def pdp_values_2D(estimated_model, X, target_name, n_splits):
     return feature_list, pdp_list, ice_list
 
 
-def pdp_plot_2D(estimated_model, X, target_name, n_splits):
+def pdp_plot_2D(estimated_model, X, target_feature, n_splits):
     """
         This function plots PDP and ICE values for target_name feature
 
@@ -376,9 +376,9 @@ def pdp_plot_2D(estimated_model, X, target_name, n_splits):
             Input model which we want to calculate PDP for
         X:                  Array like data
             A table of features values
-        target_name:                  str or int
+        target_feature:     str or int
             Name of the feature to calculate PDP for
-        n_splits:         int
+        n_splits:           int
             Number of splits for target_name feature range
 
         Returns
@@ -387,11 +387,11 @@ def pdp_plot_2D(estimated_model, X, target_name, n_splits):
     """
 
     estimator, X, _ = _check_dataset_model(estimated_model, X, 'predict')
-    if target_name not in X.columns:
+    if target_feature not in X.columns:
         raise ValueError('The provided target_name was not found in X')
     n_splits = _check_integer_values(n_splits=n_splits)
 
-    feature_list, pdp_list, ice_list = pdp_values_2D(estimated_model, X, target_name, n_splits)
+    feature_list, pdp_list, ice_list = pdp_values_2D(estimated_model, X, target_feature, n_splits)
 
     pdp_color = 'red'
     ice_color = 'blue'
@@ -399,8 +399,8 @@ def pdp_plot_2D(estimated_model, X, target_name, n_splits):
     fig, ax = plt.subplots(figsize=(12, 6))
     ice = ax.plot(feature_list, ice_list, color=ice_color, alpha=0.1)
     pdp = ax.plot(feature_list, pdp_list, color=pdp_color, lw=2)
-    ax.set_title('2D PDP for {} feature'.format(str(target_name)))
-    ax.set_xlabel('Value changes of {} feature'.format(str(target_name)))
+    ax.set_title('2D PDP for {} feature'.format(str(target_feature)))
+    ax.set_xlabel('Value changes of {} feature'.format(str(target_feature)))
     ax.set_ylabel('Target variable')
     ax.minorticks_on()
     ax.grid(which='major', color='grey')
@@ -421,19 +421,26 @@ def pdp_interval_values(estimated_model, X, target_feature, grid_points_val, tar
             Input model which we want to calculate PDP values for
         X:                  Array like data
             A table of features' values
-        target_feature:         string
+        target_feature:     string
             Target feature for finding intervals
-        grid_points_val         integer
+        grid_points_val:    integer
             Number of points for calculating PDP
-        target_val_lower        float
+        target_val_lower:   float
             Lower-boundary value of interval
-        target_val_upper        float
+        target_val_upper:   float
             Upper-boundary value of interval
 
         Returns
         -------
-        PDP intervals values           list([tuple], value, value))
+        PDP intervals values    list([tuple], value, value))
     """
+
+    estimator, X, _ = _check_dataset_model(estimated_model, X, 'predict')
+    if target_feature not in X.columns:
+        raise ValueError('The provided target_name was not found in X')
+    grid_points_val = _check_integer_values(grid_points_val=grid_points_val)
+    target_val_lower, target_val_upper = _check_float_values(target_val_lower=target_val_lower,
+                                                             target_val_upper=target_val_upper)
 
     pdp_goals = pdp_values_2D(estimated_model, X, target_feature, grid_points_val - 1)
 
