@@ -146,7 +146,7 @@ def _check_float_values(**kwarg):     # Проверка на float
 
 # ================= MAIN FUNCTIONS =================
 
-#UP TO DATE
+
 def get_loco_feature_importances(estimated_model, X, y, data_split=False, fit_args=None, **kwargs):
     """
         This function calculates LOCO feature importances.
@@ -237,10 +237,10 @@ def get_loco_feature_importances(estimated_model, X, y, data_split=False, fit_ar
 
     return result
 
-#UP TO DATE
+
 def get_pfi_feature_importances(estimated_model, X, y, shuffle_num=3, **kwargs):
     """
-        this function calculates PFI feature importances
+        This function calculates PFI feature importances
             1) Input trained model, table of features and column of target values
             2) Make a prediction and evaluate start loss array with any metrics acceptable
             3) Calculate the importance of features by dividing the vector of errors of the dataset with shuffled
@@ -312,47 +312,107 @@ def get_pfi_feature_importances(estimated_model, X, y, shuffle_num=3, **kwargs):
 
     return result
 
-#UPDATED CHECKERS
-def pdp_plot_2D(estimated_model, X, target_feature, **kwargs):
+
+def pdp_values_2D(estimated_model, X, target_name, n_splits):
     """
-        Just a simple overlay of the pdpbox library function pdp_isolate for PDP/ICE plotting
+        This function calculates PDP and ICE values for target_name feature
 
         Parameters
         ----------
-        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type
-                            with `fit` and `predict` methods
-            Input model which we want to plot PDP for
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit` and `predict` methods
+            Input model which we want to calculate PDP for
         X:                  Array like data
-            A table of features' values
-        target_feature:         string
-            target feature for plotting PDP for
-        Keyword Arguments
-        -----------------
-        grid_points_val         integer
-            Number of points for plotting PDP.
-            30 by default.
+            A table of features values
+        target_name:                  str or int
+            Name of the feature to calculate PDP for
+        n_splits:         int
+            Number of splits for target_name feature range
+
         Returns
         -------
-        Plots PDP. No output.
-        """
+        PDP Values:        tuple of 3 np.array
+            The output contains of 3 np.arrays: feature_list, pdp_list, ice_list
+    """
 
-    X, estimated_model, feature_names = _check_dataset_model(X, estimated_model)
+    estimator, X, _ = _check_dataset_model(estimated_model, X, 'predict')
+    if target_name not in X.columns:
+        raise ValueError('The provided target_name was not found in X')
+    n_splits = _check_integer_values(n_splits=n_splits)
 
-    grid_points_val = kwargs.get('grid_points_val', 30)
+    pdp_list = []
+    ice_list = []
+    feature_list = []
+    X_copy = X.copy()
+    x_max = X[target_name].max()
+    x_min = X[target_name].min()
 
-    grid_points_val = _check_float_values(grid_points_val=grid_points_val)
+    step = abs(x_max - x_min) / n_splits
+    feature_vals = np.arange(x_min, x_max + step, step)
 
-    pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names,
-                               feature=target_feature, num_grid_points=grid_points_val, grid_type='equal')
+    for feature_val in feature_vals:
+        X_copy[target_name] = feature_val
 
-    pdp.pdp_plot(pdp_goals, target_feature)
+        predict = estimator.predict(X_copy)
+        predict = np.array(predict)
+
+        feature_list.append(feature_val)
+        pdp_list.append(predict.mean())
+        ice_list.append(predict)
+
+    feature_list = np.array(feature_list)
+    pdp_list = np.array(pdp_list)
+    ice_list = np.array(ice_list)
+
+    return feature_list, pdp_list, ice_list
+
+
+def pdp_plot_2D(estimated_model, X, target_name, n_splits):
+    """
+        This function plots PDP and ICE values for target_name feature
+
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit` and `predict` methods
+            Input model which we want to calculate PDP for
+        X:                  Array like data
+            A table of features values
+        target_name:                  str or int
+            Name of the feature to calculate PDP for
+        n_splits:         int
+            Number of splits for target_name feature range
+
+        Returns
+        -------
+        Nothing, just plot
+    """
+
+    estimator, X, _ = _check_dataset_model(estimated_model, X, 'predict')
+    if target_name not in X.columns:
+        raise ValueError('The provided target_name was not found in X')
+    n_splits = _check_integer_values(n_splits=n_splits)
+
+    feature_list, pdp_list, ice_list = pdp_values_2D(estimated_model, X, target_name, n_splits)
+
+    pdp_color = 'red'
+    ice_color = 'blue'
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    ice = ax.plot(feature_list, ice_list, color=ice_color, alpha=0.1)
+    pdp = ax.plot(feature_list, pdp_list, color=pdp_color, lw=2)
+    ax.set_title('2D PDP for {} feature'.format(str(target_name)))
+    ax.set_xlabel('Value changes of {} feature'.format(str(target_name)))
+    ax.set_ylabel('Target variable')
+    ax.minorticks_on()
+    ax.grid(which='major', color='grey')
+    ax.grid(which='minor', linestyle=':', color='grey')
+
+    ax.legend((pdp[0], ice[0]), ['PDP line', 'ICE values'])
     plt.show()
 
 
-def pdp_values(estimated_model, X, target_feature, target_val_upper, target_val_lower, **kwargs):
-
+def pdp_interval_values(estimated_model, X, target_feature, grid_points_val, target_val_lower, target_val_upper):
     """
-        Just a simple overlay of the pdpbox library function pdp_isolate for calculating PDP values
+        Function for finding intervals of analysed feature, where target variable is in the provided interval
 
         Parameters
         ----------
@@ -362,41 +422,26 @@ def pdp_values(estimated_model, X, target_feature, target_val_upper, target_val_
         X:                  Array like data
             A table of features' values
         target_feature:         string
-            target feature for calculating PDP values for
-        target_val_upper        float
-            upper-boundary value of interval
-        target_val_lower        float
-            lower-boundary value of interval
-        Keyword Arguments
-        -----------------
+            Target feature for finding intervals
         grid_points_val         integer
-            Number of points for plotting PDP.
-            30 by default.
+            Number of points for calculating PDP
+        target_val_lower        float
+            Lower-boundary value of interval
+        target_val_upper        float
+            Upper-boundary value of interval
+
         Returns
         -------
-        PDP values           list([tuple], value, value))
+        PDP intervals values           list([tuple], value, value))
     """
 
-    X, estimated_model, feature_names = _check_dataset_model(X, estimated_model)
-
-    grid_points_val = kwargs.get('grid_points_val', 30)
-
-    target_val_upper, target_val_lower, grid_points_val = _check_float_values(target_val_upper = target_val_upper,
-                                                                              target_val_lower = target_val_lower,
-                                                                              grid_points_val = grid_points_val)
-
-
-
-
-    pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names, 
-                            feature=target_feature, num_grid_points=grid_points_val, grid_type='equal')
+    pdp_goals = pdp_values_2D(estimated_model, X, target_feature, grid_points_val - 1)
 
     intervals = np.zeros([grid_points_val, 3])
-    
-    for i in range (0, grid_points_val): 
-        intervals[i, 0] = pdp_goals.pdp[i]
-        intervals[i, 1] = pdp_goals.display_columns[i]
-        if pdp_goals.pdp[i] > target_val_lower and pdp_goals.pdp[i] < target_val_upper:
+    for i in range(0, grid_points_val):
+        intervals[i, 0] = pdp_goals[1][i]
+        intervals[i, 1] = pdp_goals[0][i]
+        if pdp_goals[1][i] > target_val_lower and pdp_goals[1][i] < target_val_upper:
             intervals[i, 2] = 1
         else:
             intervals[i, 2] = -1
@@ -409,27 +454,27 @@ def pdp_values(estimated_model, X, target_feature, target_val_upper, target_val_
     current_interval_list = np.array([])
     start = 0
     end = 0
-    
+
     for i in range(0, grid_points_val):
-        if intervals[i, 2] == 1 and flag and i != grid_points_val-1:
+        if intervals[i, 2] == 1 and flag and i != grid_points_val - 1:
             start = intervals[i, 1]
             end = intervals[i, 1]  # Начало интервала
             flag = False
             current_interval_list = np.empty(0)
             current_interval_list = np.append(current_interval_list, [start])
 
-        elif intervals[i, 2] == 1 and not flag and i != grid_points_val-1:
+        elif intervals[i, 2] == 1 and not flag and i != grid_points_val - 1:
             end = intervals[i, 1]
             current_interval_list = np.append(current_interval_list, [end])  # Продолжение записи интервала
-             
-        elif intervals[i, 2] == 1 and flag and i == grid_points_val-1:
+
+        elif intervals[i, 2] == 1 and flag and i == grid_points_val - 1:
             start = intervals[i, 1]  # Единичный интервал в конце списка
             average_val_list.append(start)
             median_val_list.append(start)
             current_interval_list.clear()
             interval_list.append((start, start))
 
-        elif intervals[i, 2] == 1 and not flag and i == grid_points_val-1:
+        elif intervals[i, 2] == 1 and not flag and i == grid_points_val - 1:
             # запись последнего интервала, если последний элемент подходит по условиям
             end = intervals[i, 1]
             current_interval_list = np.append(current_interval_list, [end])
@@ -438,8 +483,8 @@ def pdp_values(estimated_model, X, target_feature, target_val_upper, target_val_
             interval_list.append((start, end))
             current_interval_list = np.empty(0)
             flag = True
-            
-        elif intervals[i, 2] == -1 and not flag and i != grid_points_val-1:
+
+        elif intervals[i, 2] == -1 and not flag and i != grid_points_val - 1:
             # Конец интервала; его запись в список
             average_val_list.append(np.average(current_interval_list))
             median_val_list.append(np.median(current_interval_list))
@@ -448,49 +493,11 @@ def pdp_values(estimated_model, X, target_feature, target_val_upper, target_val_
             flag = True
 
     finals_list = [interval_list, average_val_list, median_val_list]
-    
+
     return finals_list
 
-#UPDATED CHECKERS
-def ice_values(estimated_model, X, target_feature, grid_val_start, grid_val_end):
-    """
-        Just a simple overlay of the pdpbox library function pdp_isolate for calculating ICE values
 
-        Parameters
-        ----------
-        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
-                            and `predict` methods
-            Input model which we want to calculate ICE values for
-        X:                  Array like data
-            A table of features values
-        target_feature:         string
-            target feature for calculating ICE values for
-        grid_val_start        float
-            start of the interval
-        grid_val_end           float
-            end of the interval
-        Keyword Arguments
-        -----------------
-        None
-        Returns
-        -------
-        ICE values       pandas.DataFrame
-    """
-
-    X, estimated_model, feature_names = _check_dataset_model(X, estimated_model)
-
-    grid_val_start, grid_val_end = _check_float_values(grid_val_start = grid_val_start, grid_val_end = grid_val_end)
-
-    g_range = (grid_val_start, grid_val_end)
-
-
-    pdp_goals = pdp.pdp_isolate(model=estimated_model, dataset=X, model_features=feature_names,
-                            feature=target_feature, num_grid_points=30, grid_type='equal',
-                            grid_range=g_range)
-
-    return pdp_goals.ice_lines
-
-#UPDATED CHECKS
+# UPDATED CHECKS
 def pdp_plot_3D(estimated_model, X, feature_name_1, feature_name_2):
     """
         Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
@@ -527,7 +534,8 @@ def pdp_plot_3D(estimated_model, X, feature_name_1, feature_name_2):
 
     fig.show()
 
-#UP TO DATE
+
+# UP TO DATE
 def shap_plot(estimated_model, X):
     """
         Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
@@ -552,7 +560,8 @@ def shap_plot(estimated_model, X):
     print(type(shap_values))
     shap.plots.waterfall(shap_values[0])
 
-#UP TO DATE
+
+# UP TO DATE
 def lime_plot(estimated_model, X, **kwargs):
     """
         Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
@@ -611,7 +620,7 @@ def lime_plot(estimated_model, X, **kwargs):
 # ================= ADDITIONAL FUNCTIONS =================
 
 
-## Target metric count for objects belongs to pair of features and they intervals. IMPORTANT: MIGHT BE NOT RELIABLE
+# Target metric count for objects belongs to pair of features and they intervals. IMPORTANT: MIGHT BE NOT RELIABLE
 
 def targetMetric(df, target, fun='mean', colLim={0: [0, 0], 1:[0, 0]}):
     '''
@@ -624,7 +633,7 @@ def targetMetric(df, target, fun='mean', colLim={0: [0, 0], 1:[0, 0]}):
     OutPuts:
      function return aggregate of target values of objects corresponded to conditions of intervals per each interesting columns
   '''
-   ## chose objects inside of feture intervals
+   # choose objects inside of feature intervals
     _cond = None
     for _key in colLim:
         if not (_cond is None):
@@ -632,7 +641,7 @@ def targetMetric(df, target, fun='mean', colLim={0: [0, 0], 1:[0, 0]}):
         else:
             _cond = (df[_key] >= colLim[_key][0]) & (df[_key] <= colLim[_key][1])
     _df_filter = df[_cond]
-    # choose objects coresponds in interval
+    # choose objects corresponds in interval
     inIntervalSet = _df_filter[target]
 
     if fun == 'mean':
