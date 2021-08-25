@@ -391,7 +391,7 @@ def pdp_plot_2D(estimated_model, X, target_feature, n_splits):
         raise ValueError('The provided target_name was not found in X')
     n_splits = _check_integer_values(n_splits=n_splits)
 
-    feature_list, pdp_list, ice_list = pdp_values_2D(estimated_model, X, target_feature, n_splits)
+    feature_list, pdp_list, ice_list = pdp_values_2D(estimator, X, target_feature, n_splits)
 
     pdp_color = 'red'
     ice_color = 'blue'
@@ -442,7 +442,7 @@ def pdp_interval_values(estimated_model, X, target_feature, grid_points_val, tar
     target_val_lower, target_val_upper = _check_float_values(target_val_lower=target_val_lower,
                                                              target_val_upper=target_val_upper)
 
-    pdp_goals = pdp_values_2D(estimated_model, X, target_feature, grid_points_val - 1)
+    pdp_goals = pdp_values_2D(estimator, X, target_feature, grid_points_val - 1)
 
     intervals = np.zeros([grid_points_val, 3])
     for i in range(0, grid_points_val):
