@@ -2,18 +2,18 @@
 # 
 # Have fun!
 
-# importing all nessessary libraries beforehand
+# importing all necessary libraries beforehand
 
 import shap
 import numpy as np
 import pandas as pd
 import logging
+import seaborn as sns
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from lime.lime_tabular import LimeTabularExplainer
 from matplotlib import pyplot as plt
-from pdpbox import pdp
 
 
 # =============== AUXILIARY FUNCTIONS ===============
@@ -338,6 +338,8 @@ def pdp_values_2D(estimated_model, X, target_name, n_splits):
     if target_name not in X.columns:
         raise ValueError('The provided target_name was not found in X')
     n_splits = _check_integer_values(n_splits=n_splits)
+    if n_splits <= 0:
+        raise ValueError('The provided n_splits has to be positive non-zero value. Got:' + str(n_splits))
 
     pdp_list = []
     ice_list = []
@@ -347,7 +349,7 @@ def pdp_values_2D(estimated_model, X, target_name, n_splits):
     x_min = X[target_name].min()
 
     step = abs(x_max - x_min) / n_splits
-    feature_vals = np.arange(x_min, x_max + step, step)
+    feature_vals = np.arange(x_min, x_max + step, step)[:n_splits+1]
 
     for feature_val in feature_vals:
         X_copy[target_name] = feature_val
@@ -390,6 +392,8 @@ def pdp_plot_2D(estimated_model, X, target_feature, n_splits):
     if target_feature not in X.columns:
         raise ValueError('The provided target_name was not found in X')
     n_splits = _check_integer_values(n_splits=n_splits)
+    if n_splits <= 0:
+        raise ValueError('The provided n_splits has to be positive non-zero value. Got:' + str(n_splits))
 
     feature_list, pdp_list, ice_list = pdp_values_2D(estimator, X, target_feature, n_splits)
 
@@ -408,6 +412,7 @@ def pdp_plot_2D(estimated_model, X, target_feature, n_splits):
 
     ax.legend((pdp[0], ice[0]), ['PDP line', 'ICE values'])
     plt.show()
+    return
 
 
 def pdp_interval_values(estimated_model, X, target_feature, grid_points_val, target_val_lower, target_val_upper):
@@ -439,6 +444,8 @@ def pdp_interval_values(estimated_model, X, target_feature, grid_points_val, tar
     if target_feature not in X.columns:
         raise ValueError('The provided target_name was not found in X')
     grid_points_val = _check_integer_values(grid_points_val=grid_points_val)
+    if grid_points_val <= 1:
+        raise ValueError('The provided grid_points_val has to be >= 2. Got:' + str(grid_points_val))
     target_val_lower, target_val_upper = _check_float_values(target_val_lower=target_val_lower,
                                                              target_val_upper=target_val_upper)
 
@@ -500,14 +507,12 @@ def pdp_interval_values(estimated_model, X, target_feature, grid_points_val, tar
             flag = True
 
     finals_list = [interval_list, average_val_list, median_val_list]
-
     return finals_list
 
 
-# UPDATED CHECKS
-def pdp_plot_3D(estimated_model, X, feature_name_1, feature_name_2):
+def pdp_values_3D(estimated_model, X, target_name_1, target_name_2, n_splits):
     """
-        Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
+        This function calculates PDP values for interaction of 2 features
 
         Parameters
         ----------
@@ -516,33 +521,103 @@ def pdp_plot_3D(estimated_model, X, feature_name_1, feature_name_2):
             Input model which we want to calculate ICE values for
         X:                  Array like data
             A table of features' values
-        feature_name_1      string
+        target_name_1      string or value
             1st feature name
-        feature_name_2      string
+        target_name_2      string or value
+            2nd feature name
+        n_splits:           int
+            Number of splits for features' range
+
+        Returns
+        --------
+        Outputs tuple of 3 objects:
+        PDP interaction 2D-matrix for 3 features,
+        range for target_name_1 feature,
+        range for target_name_2 feature
+    """
+
+    estimator, X, _ = _check_dataset_model(estimated_model, X, 'predict')
+    n_splits = _check_integer_values(n_splits=n_splits)
+    if n_splits <= 0:
+        raise ValueError('The provided n_splits has to be positive non-zero value. Got:' + str(n_splits))
+    if target_name_1 not in X.columns:
+        raise ValueError('The provided target_name_1 was not found in X')
+    if target_name_2 not in X.columns:
+        raise ValueError('The provided target_name_2 was not found in X')
+
+    x_max_1 = X[target_name_1].max()
+    x_min_1 = X[target_name_1].min()
+    step_1 = abs(x_max_1 - x_min_1) / n_splits
+    feature_vals_1 = np.arange(x_min_1, x_max_1 + step_1, step_1)[:n_splits + 1]
+
+    x_max_2 = X[target_name_2].max()
+    x_min_2 = X[target_name_2].min()
+    step_2 = abs(x_max_2 - x_min_2) / n_splits
+    feature_vals_2 = np.arange(x_min_2, x_max_2 + step_2, step_2)[:n_splits + 1]
+
+    X_copy = X.copy()
+    PDP_result = np.zeros((n_splits + 1, n_splits + 1))
+
+    for i, f_val_1 in enumerate(feature_vals_1):
+        X_copy[target_name_1] = f_val_1
+
+        for j, f_val_2 in enumerate(feature_vals_2):
+            X_copy[target_name_2] = f_val_2
+
+            predict = estimator.predict(X_copy)
+            predict = np.array(predict)
+            PDP_result[i][j] = predict.mean()
+
+    return PDP_result, feature_vals_1, feature_vals_2
+
+
+def pdp_plot_3D(estimated_model, X, target_name_1, target_name_2, n_splits):
+    """
+        This function is plotting PDP for 2 features and outputs heatmap plot
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
+                            and `predict` methods (WARNING: SHAP does not support Decision-tree-based models!)
+            Input model which we want to calculate ICE values for
+        X:                  Array like data
+            A table of features' values
+        n_splits:           int
+            Number of splits for features' range
+        target_name_1      string or value
+            1st feature name
+        target_name_2      string or value
             2nd feature name
 
         Returns
         --------
-        Outputs PDP interaction plot for 2 features as a heatmap
+        Outputs PDP heatmap interaction plot for 2 features
     """
 
-    X, estimated_model, feature_names = _check_dataset_model(X, estimated_model)
+    estimator, X, _ = _check_dataset_model(estimated_model, X, 'predict')
+    n_splits = _check_integer_values(n_splits=n_splits)
+    if n_splits <= 0:
+        raise ValueError('The provided n_splits has to be positive non-zero value. Got:' + str(n_splits))
+    if target_name_1 not in X.columns:
+        raise ValueError('The provided target_name_1 was not found in X')
+    if target_name_2 not in X.columns:
+        raise ValueError('The provided target_name_2 was not found in X')
 
-    # ДОБАВИТЬ ПРОВЕРКИ ПОСЛЕ ИМПЛИМЕНТАЦИИ КАСТОМНОГО PDP
+    PDP_result, feature_vals_1, feature_vals_2 = pdp_values_3D(estimator, X, target_name_1, target_name_2, n_splits)
 
-    pdp_goal = pdp.pdp_interact(model=estimated_model, dataset=X, model_features=feature_names, 
-                                  features=[feature_name_1, feature_name_2])
-    
-    fig, axes = pdp.pdp_interact_plot(pdp_interact_out=pdp_goal,
-                                  feature_names=[feature_name_1, feature_name_2],
-                                  plot_type='contour',
-                                  x_quantile=True,
-                                  plot_pdp=True)
+    feature_vals_1 = np.round(feature_vals_1, 3)
+    feature_vals_2 = np.round(feature_vals_2, 3)
 
-    fig.show()
+    plt.subplots(figsize=(12, 10))
+    result_2_plot = pd.DataFrame(data=PDP_result)
+    sns.heatmap(result_2_plot, xticklabels=feature_vals_1, yticklabels=feature_vals_2, annot=True)
+    plt.title('3D PDP for {} and {} feature'.format(str(target_name_1), str(target_name_2)))
+    plt.xlabel('Value changes of {} feature'.format(str(target_name_1)))
+    plt.ylabel('Value changes of {} feature'.format(str(target_name_2)))
+    plt.show()
+    return
 
 
-# UP TO DATE
+# NEEDS MORE TESTING
 def shap_plot(estimated_model, X):
     """
         Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
@@ -560,18 +635,16 @@ def shap_plot(estimated_model, X):
         Outputs SHAP plot
      """
 
-    X, estimated_model, _ = _check_dataset_model(X, estimated_model)
+    estimator, X, _ = _check_dataset_model(estimated_model, X, 'fit', 'predict')
 
-    explainer = shap.Explainer(estimated_model)
+    explainer = shap.Explainer(estimator)
     shap_values = explainer(X)
-    print(type(shap_values))
     shap.plots.waterfall(shap_values[0])
 
 
-# UP TO DATE
 def lime_plot(estimated_model, X, **kwargs):
     """
-        Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
+        Just a simple overlay of the lime library method explain_instance for calculating LIME plots
 
         Parameters
         ----------
@@ -584,47 +657,129 @@ def lime_plot(estimated_model, X, **kwargs):
         -----------------
          max_feature_amount  integer
             Maximum amount of features for plotting LIME for
-            10 by default
+            100 by default
          selection_num       integer
             number of elements for plotting LIME
-            25 by default
+            0 by default
          work_mode           string
             work mode, 'regression' by default.
             (ATTENTION - 'classification' MODE IS NOT SUPPORTED YET)
-
         Returns
         --------
         Outputs LIME plot
     """
 
-    max_feature_amount = kwargs.get("max_feature_amount", 10)
-    selection_num = kwargs.get("selection_num", 25)
+    max_feature_amount = kwargs.get("max_feature_amount", 100)
+    selection_num = kwargs.get("selection_num", 0)
     work_mode = kwargs.get("work_mode", 'regression')
 
-
-
-    X, estimated_model, _ = _check_dataset_model(X, estimated_model)
+    estimator, X, _ = _check_dataset_model(estimated_model, X, 'fit', 'predict')
     max_feature_amount, selection_num = _check_integer_values(max_feature_amount = max_feature_amount,
                                                               selection_num = selection_num)
-
     if max_feature_amount <= 0:
         raise ValueError("Incorrect feature amount. You should have at least one feature. Got:"+str(max_feature_amount))
-
-    if selection_num <= 0:
+    if selection_num < 0:
         raise ValueError("Incorrect selection amount. You should have at least one element. Got:"+str(selection_num))
-
-
 
     explainer = LimeTabularExplainer(training_data=X.to_numpy(),
         feature_names=list(X.columns),
         mode=work_mode, random_state=0)
 
-    exp = explainer.explain_instance(X.to_numpy()[selection_num], estimated_model.predict, num_features=max_feature_amount)
+    exp = explainer.explain_instance(X.to_numpy()[selection_num], estimator.predict, num_features=max_feature_amount)
     exp.as_pyplot_figure()
-    plt.tight_layout()
+    plt.show()
+    return
+
+
+def pdp_custom_4D(estimated_model, X, n_splits, target_name_1, target_name_2, target_name_3):
+    """
+        This function calculates 3d-matrix of PDP values for 3-features interaction
+
+        Parameters
+        ----------
+        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
+                            and `predict` methods (WARNING: SHAP does not support Decision-tree-based models!)
+            Input model which we want to calculate ICE values for
+        X:                  Array like data
+            A table of features' values
+        n_splits:           int
+            Number of splits for features' range
+        feature_name_1      string
+            1st feature name
+        feature_name_2      string
+            2nd feature name
+        target_name_3      string
+            2nd feature name
+
+        Returns
+        --------
+        Outputs PDP interaction 3D-matrix for 3 features
+    """
+
+    estimator, X, _ = _check_dataset_model(estimated_model, X, 'predict')
+    n_splits = _check_integer_values(n_splits=n_splits)
+    if n_splits <= 0:
+        raise ValueError('The provided n_splits has to be positive non-zero value. Got:' + str(n_splits))
+
+    if target_name_1 not in X.columns:
+        raise ValueError('The provided target_name_1 was not found in X')
+    if target_name_2 not in X.columns:
+        raise ValueError('The provided target_name_2 was not found in X')
+    if target_name_3 not in X.columns:
+        raise ValueError('The provided target_name_3 was not found in X')
+
+    feature_list_1 = list()
+    feature_list_2 = list()
+    feature_list_3 = list()
+
+    x_max_1 = X[target_name_1].max()
+    x_min_1 = X[target_name_1].min()
+
+    x_max_2 = X[target_name_2].max()
+    x_min_2 = X[target_name_2].min()
+
+    x_max_3 = X[target_name_3].max()
+    x_min_3 = X[target_name_3].min()
+
+    X_copy = X.copy()
+
+    step_1 = abs(x_max_1 - x_min_1) / n_splits
+    step_2 = abs(x_max_2 - x_min_2) / n_splits
+    step_3 = abs(x_max_3 - x_min_3) / n_splits
+
+    x_axis = int(n_splits + 1)
+    y_axis = int(n_splits + 1)
+    z_axis = int(n_splits + 1)
+
+    s = (x_axis, y_axis, z_axis)
+    PDP_result = np.zeros(s)
+
+    counter_1 = x_min_1
+    counter_2 = x_min_2
+    counter_3 = x_min_3
+
+    for i in range(n_splits + 1):
+
+        feature_list_1.append(counter_1 + (i * step_1))
+        X_copy[target_name_1] = counter_1 + i * step_1
+
+        for j in range(n_splits + 1):
+
+            feature_list_2.append(counter_2 + j * step_2)
+            X_copy[target_name_2] = counter_2 + j * step_2
+
+            for k in range(n_splits + 1):
+                feature_list_3.append(counter_3 + k * step_3)
+                X_copy[target_name_3] = counter_3 + k * step_3
+
+                temp = estimator.predict(X_copy)
+                PDP_result[i][j][k] = temp.mean()
+
+    return PDP_result
 
 
 # ================= ADDITIONAL FUNCTIONS =================
+# ======= (DESCRIPTIONS WILL BE ADDED LATER) =============
 
 
 # Target metric count for objects belongs to pair of features and they intervals. IMPORTANT: MIGHT BE NOT RELIABLE
