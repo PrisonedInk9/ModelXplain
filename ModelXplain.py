@@ -343,7 +343,6 @@ def pdp_values_2D(estimated_model, X, target_name, n_splits):
 
     pdp_list = []
     ice_list = []
-    feature_list = []
     X_copy = X.copy()
     x_max = X[target_name].max()
     x_min = X[target_name].min()
@@ -357,15 +356,13 @@ def pdp_values_2D(estimated_model, X, target_name, n_splits):
         predict = estimator.predict(X_copy)
         predict = np.array(predict)
 
-        feature_list.append(feature_val)
         pdp_list.append(predict.mean())
         ice_list.append(predict)
 
-    feature_list = np.array(feature_list)
     pdp_list = np.array(pdp_list)
     ice_list = np.array(ice_list)
 
-    return feature_list, pdp_list, ice_list
+    return feature_vals, pdp_list, ice_list
 
 
 def pdp_plot_2D(estimated_model, X, target_feature, n_splits):
@@ -778,93 +775,107 @@ def pdp_custom_4D(estimated_model, X, n_splits, target_name_1, target_name_2, ta
     return PDP_result
 
 
-# ================= ADDITIONAL FUNCTIONS =================
-# ======= (DESCRIPTIONS WILL BE ADDED LATER) =============
+# ============= ADDITIONAL FUNCTIONS FOR DATA ANALYZE =============
 
 
-# Target metric count for objects belongs to pair of features and they intervals. IMPORTANT: MIGHT BE NOT RELIABLE
+def target_count(df, target, feature_intervals, fun='mean'):
+    """
+        Target metric count for objects belongs to pair of features and they intervals
+        This function was provided by Sergey
 
-def targetMetric(df, target, fun='mean', colLim={0: [0, 0], 1:[0, 0]}):
-    '''
-    InPuts:
-      _df - dataSet in pandas DataFrame
-      _fun - name of agregate action for target values ('mean', 'median', 'classification')
-      colLim - dict of pairs:
-          key: columnname from _df
-         value: list of left and right values of interested interval
-    OutPuts:
-     function return aggregate of target values of objects corresponded to conditions of intervals per each interesting columns
-  '''
-   # choose objects inside of feature intervals
-    _cond = None
-    for _key in colLim:
-        if not (_cond is None):
-            _cond = (_cond) & (df[_key] >= colLim[_key][0]) & (df[_key] <= colLim[_key][1])
+        Parameters
+        ----------
+        df:                     pandas DataFrame
+            A table of objects' features and a target variable
+        target:                 string or int
+            Name of the column with target variable
+        feature_intervals:      {key1: value1, key2: value2}
+            2 objects must be
+            key - column name from df
+            value - array-like object with left and right values of interested interval
+        fun:                    string
+            name of aggregate action for target values:
+            ('mean', 'median', 'classification')
+
+        Returns
+        --------
+        aggregated by "fun" target values of objects corresponded to conditions of intervals
+    """
+
+    # choose objects inside of feature intervals
+    cond = None
+    for key in feature_intervals.keys():
+        if not (cond is None):
+            cond = cond & (df[key] >= feature_intervals[key][0]) & (df[key] <= feature_intervals[key][1])
         else:
-            _cond = (df[_key] >= colLim[_key][0]) & (df[_key] <= colLim[_key][1])
-    _df_filter = df[_cond]
+            cond = (df[key] >= feature_intervals[key][0]) & (df[key] <= feature_intervals[key][1])
+    df_filter = df[cond]
     # choose objects corresponds in interval
-    inIntervalSet = _df_filter[target]
+    in_interval_set = df_filter[target]
 
     if fun == 'mean':
-        res = np.nanmean(inIntervalSet)
+        res = np.nanmean(in_interval_set)
     elif fun == 'median':
-        res = np.nanmedian(inIntervalSet)
+        res = np.nanmedian(in_interval_set)
     elif fun == 'classification':
-        if np.size(inIntervalSet, 0) != 0 :
-            res = np.sum(inIntervalSet)/np.size(inIntervalSet, 0)
+        if np.size(in_interval_set, 0) != 0:
+            res = np.sum(in_interval_set)/np.size(in_interval_set, 0)
         else:
             res = 1
     else:
-        res = np.nanmean(inIntervalSet)
-    return round(res,3)
+        res = np.nanmean(in_interval_set)
+    return round(res, 3)
 
 
-# Подготовка данных для графиков парного влияния параметров на брак
-#2D heatmap                                                                     IMPORTANT: MIGHT BE NOT RELIABLE
-# сформируем данные для отображения карты в 2 и 3 мерном пространстве
+def feature_target_dependency_3d_chart(df, target, col_lim, fun='mean'):
+    """
+        Plots graphs of paired influence of parameters on the target variable
+        This function was provided by Sergey
 
-# Создаем массивы NumPy с координатами точек по осям X и У.
-# Используем метод meshgrid, при котором по векторам координат
-# создается матрица координат. Задаем нужную функцию Z(x, y).
+        Parameters
+        ----------
+        df:                 pandas DataFrame
+            A table of objects' features and a target variable
+        target:             string or int
+            Name of the column with target variable
+        col_lim:            {key1: value1, key2: value2}
+            2 objects must be
+            key - column name from df
+            value - array-like,
+                value[0] - min edge,
+                value[1] - max edge,
+                value[2] - step for mesh grid
+        fun:                string
+            name of aggregate action for target values:
+            ('mean', 'median', 'classification')
 
-def gridConstruct(_dt, _colLim):
-#    colLim - dictionary:
-#       key - column name in _dt,
-#       value - ndarray,
-#       value[0] means min edge,
-#       value[1] means max edge,
-#       value[2] means step for mesh gfrid
-    _grid = []
-    _keys = []  ##auxiliary list to remember column names
-    for _key in _colLim:
-        _keys.append(_key)
-        X = np.arange(_colLim[_key][0],  _colLim[_key][1], _colLim[_key][2])
-        _grid.append(X)
-    xlen = len(_grid[0])
-    ylen = len(_grid[1])
+        Returns
+        --------
+        3D-plot showing dependency between target and 2 features
+    """
 
-    Z = np.zeros((ylen,xlen))
-    _gridLim = _colLim.copy()
-    for i in range(ylen)[:-1]:
-        for k in range(xlen)[:-1]:
-            _gridLim = {_keys[1]:[_grid[1][i], _grid[1][i+1]], _keys[0]:[_grid[0][k], _grid[0][k+1]]}
-            Z[i,k] = targetMetric(_dt, 'classification', _gridLim)
-    X, Y = np.meshgrid(_grid[0], _grid[1])
-    return X,Y,Z
+    grid = []
+    keys = col_lim.keys()
+    for key in keys:
+        X = np.arange(col_lim[key][0], col_lim[key][1], col_lim[key][2])
+        grid.append(X)
 
+    x_len = len(grid[0])
+    y_len = len(grid[1])
 
-#2D plot IMPORTANT: MIGHT BE NOT RELIABLE
+    Z = np.zeros((y_len, x_len))
+    for i in range(y_len)[:-1]:
+        for k in range(x_len)[:-1]:
+            grid_lim = {keys[1]:[grid[1][i], grid[1][i+1]], keys[0]:[grid[0][k], grid[0][k+1]]}
+            Z[i,k] = target_count(df, target, grid_lim, fun)
+    X, Y = np.meshgrid(grid[0], grid[1])
 
-def d3ChartShow(X,Y,Z, _cols):
-    # 3D-график
-    plt.figure(figsize=(14,10))
-    surf2d  = plt.contourf(X, Y, Z, 8, cmap='BuPu', grid=True, alpha=0.7)
+    plt.figure(figsize=(14, 10))
+    surf2d = plt.contourf(X, Y, Z, 8, cmap='BuPu', grid=True, alpha=0.7)
     plt.colorbar(surf2d)
-    plt.xlabel(_cols[0])
-    plt.ylabel(_cols[1])
-    plt.title(_cols[2])
     plt.show()
+    return
+
 
 '''
 
