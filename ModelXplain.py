@@ -614,38 +614,16 @@ def pdp_plot_3D(estimated_model, X, target_name_1, target_name_2, n_splits):
     return
 
 
-# NEEDS MORE TESTING
-def shap_plot(estimated_model, X):
+def shap_plot(estimated_model, X, selection_num):
     """
-        Just a simple overlay of the shap library method  waterfall for calculating SHAP plots
+        Overlay of the shap library method  waterfall for calculating SHAP plots
 
-        Parameters
-        ----------
-        estimated_model:    Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
-                            and `predict` methods (WARNING: SHAP does not support Decision-tree-based models!)
-             Input model which we want to calculate ICE values for
-        X:                  Array like data
-             A table of features' values
+        The SHAP value of a feature represents the impact of the evidence
+        provided by that feature on the model’s output
 
-        Returns
-        --------
-        Outputs SHAP plot
-     """
-
-    estimator, X, _ = _check_dataset_model(estimated_model, X, 'fit', 'predict')
-
-    explainer = shap.Explainer(estimator)
-    shap_values = explainer(X)
-
-    inp = shap_values[0]
-    inp.base_values = inp.base_values[0]
-
-    shap.plots.waterfall(inp)
-
-
-def lime_plot(estimated_model, X, **kwargs):
-    """
-        Just a simple overlay of the lime library method explain_instance for calculating LIME plots
+        The waterfall plot is designed to visually display how the SHAP values (evidence)
+        of each feature move the model output from our prior expectation under the background
+        data distribution, to the final model prediction given the evidence of all the features
 
         Parameters
         ----------
@@ -654,15 +632,48 @@ def lime_plot(estimated_model, X, **kwargs):
             Input model which we want to calculate ICE values for
         X:                  Array like data
             A table of features' values
+        selection_num:      int
+            index of element for getting LIME explanation
+
+        Returns
+        --------
+        Plots an explantion of a single prediction as a waterfall plot.
+     """
+
+    estimator, X, _ = _check_dataset_model(estimated_model, X, 'fit', 'predict')
+    selection_num = _check_integer_values(selection_num=selection_num)
+    if selection_num < 0:
+        raise ValueError("Incorrect selection_num, index of an element can't be negative. Got: " + str(selection_num))
+
+    explainer = shap.Explainer(estimator)
+    shap_values = explainer(X)
+
+    inp = shap_values[selection_num]
+    inp.base_values = inp.base_values[0]
+
+    shap.plots.waterfall(inp)
+    return
+
+
+def lime_plot(estimated_model, X, selection_num, **kwargs):
+    """
+        Overlay of the lime library method explain_instance for calculating LIME plots
+
+        Parameters
+        ----------
+        estimated_model:        Fitted sklearn, XGBoost, CatBoost or any other model class type with `fit`
+                                and `predict` methods (WARNING: SHAP does not support Decision-tree-based models!)
+            Input model which we want to calculate ICE values for
+        X:                      Array like data
+            A table of features' values
+        selection_num:          int
+            index of element for getting LIME explanation
         Keyword Arguments
         -----------------
-         max_feature_amount  integer
+         max_feature_amount:    int
             Maximum amount of features for plotting LIME for
             100 by default
-         selection_num       integer
-            number of elements for plotting LIME
-            0 by default
-         work_mode           string
+         work_mode:             string
             work mode, 'regression' by default.
             (ATTENTION - 'classification' MODE IS NOT SUPPORTED YET)
         Returns
@@ -671,16 +682,15 @@ def lime_plot(estimated_model, X, **kwargs):
     """
 
     max_feature_amount = kwargs.get("max_feature_amount", 100)
-    selection_num = kwargs.get("selection_num", 0)
     work_mode = kwargs.get("work_mode", 'regression')
 
     estimator, X, _ = _check_dataset_model(estimated_model, X, 'fit', 'predict')
     max_feature_amount, selection_num = _check_integer_values(max_feature_amount = max_feature_amount,
                                                               selection_num = selection_num)
     if max_feature_amount <= 0:
-        raise ValueError("Incorrect feature amount. You should have at least one feature. Got:"+str(max_feature_amount))
+        raise ValueError("Incorrect max_feature_amount, must be > 0. Got: " + str(max_feature_amount))
     if selection_num < 0:
-        raise ValueError("Incorrect selection amount. You should have at least one element. Got:"+str(selection_num))
+        raise ValueError("Incorrect selection_num, index of an element can't be negative. Got: " + str(selection_num))
 
     explainer = LimeTabularExplainer(training_data=X.to_numpy(),
         feature_names=list(X.columns),
@@ -692,7 +702,7 @@ def lime_plot(estimated_model, X, **kwargs):
     return
 
 
-def pdp_custom_4D(estimated_model, X, n_splits, target_name_1, target_name_2, target_name_3):
+def pdp_values_4D(estimated_model, X, n_splits, target_name_1, target_name_2, target_name_3):
     """
         This function calculates 3d-matrix of PDP values for 3-features interaction
 
