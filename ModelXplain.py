@@ -636,7 +636,11 @@ def shap_plot(estimated_model, X):
 
     explainer = shap.Explainer(estimator)
     shap_values = explainer(X)
-    shap.plots.waterfall(shap_values[0])
+
+    inp = shap_values[0]
+    inp.base_values = inp.base_values[0]
+
+    shap.plots.waterfall(inp)
 
 
 def lime_plot(estimated_model, X, **kwargs):
