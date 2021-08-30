@@ -568,7 +568,7 @@ def pdp_values_3D(estimated_model, X, target_name_1, target_name_2, n_splits):
     return PDP_result, feature_vals_1, feature_vals_2
 
 
-def pdp_plot_3D(estimated_model, X, target_name_1, target_name_2, n_splits):
+def pdp_plot_3D(estimated_model, X, target_name_1, target_name_2, n_splits, **kwargs):
     """
         This function is plotting PDP for 2 features and outputs heatmap plot
         Parameters
@@ -584,11 +584,25 @@ def pdp_plot_3D(estimated_model, X, target_name_1, target_name_2, n_splits):
             1st feature name
         target_name_2      string or value
             2nd feature name
-
+        scale_1             integer
+            Y axis length
+            12 by default
+        scale_2             integer
+            X axis length
+            10 by default
+        annotation          bool
+            Enable/disable PDP values in each domain on heatmap
+            False by default
         Returns
         --------
         Outputs PDP heatmap interaction plot for 2 features
     """
+
+    scale_1 = kwargs.get("scale_1", 12)
+    scale_2 = kwargs.get("scale_2", 10)
+    annotation = kwargs.get("annotation", False)
+
+    scale_1, scale_2 = _check_integer_values(scale_1=scale_1, scale_2=scale_2)
 
     estimator, X, _ = _check_dataset_model(estimated_model, X, 'predict')
     n_splits = _check_integer_values(n_splits=n_splits)
@@ -604,9 +618,9 @@ def pdp_plot_3D(estimated_model, X, target_name_1, target_name_2, n_splits):
     feature_vals_1 = np.round(feature_vals_1, 3)
     feature_vals_2 = np.round(feature_vals_2, 3)
 
-    plt.subplots(figsize=(12, 10))
+    plt.subplots(figsize=(scale_1, scale_2))
     result_2_plot = pd.DataFrame(data=PDP_result)
-    sns.heatmap(result_2_plot, xticklabels=feature_vals_1, yticklabels=feature_vals_2, annot=True)
+    sns.heatmap(result_2_plot, xticklabels=feature_vals_1, yticklabels=feature_vals_2, annot=annotation)
     plt.title('3D PDP for {} and {} feature'.format(str(target_name_1), str(target_name_2)))
     plt.xlabel('Value changes of {} feature'.format(str(target_name_1)))
     plt.ylabel('Value changes of {} feature'.format(str(target_name_2)))
