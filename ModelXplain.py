@@ -905,7 +905,16 @@ def feature_target_dependency_3d_chart(df, target, col_lim, fun='mean'):
     return
 
 
+
+
+
+
 '''
+
+Special_thanks to:
+    - Sergey Gromov - Project lead
+    - Oleg Shatrov - Contributor/Early tester
+
 
  _____                       _         _                         __     __      __      _ 
 (_   _)                     ( )       ( )_            _  _     /'__`\ /' _`\  /'__`\  /' )
